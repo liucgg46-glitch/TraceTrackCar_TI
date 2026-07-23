@@ -24,7 +24,23 @@ USER_C_FILES = \
     ../User/Core/main.c \
     ../User/BSP/bsp_common.c \
     ../User/BSP/bsp_systick.c \
-    ../User/BSP/bsp_gpio.c
+    ../User/BSP/bsp_gpio.c \
+    ../User/BSP/bsp_exti.c \
+    ../User/BSP/bsp_key.c \
+    ../User/BSP/bsp_pwm.c \
+    ../User/BSP/bsp_encoder.c \
+    ../User/BSP/bsp_uart.c \
+    ../User/BSP/bsp_i2c.c \
+    ../User/BSP/bsp_spi.c \
+    ../User/BSP/bsp_adc.c \
+    ../User/BSP/bsp_all.c \
+    $(wildcard ../User/Common/*.c) \
+    $(wildcard ../User/Algorithm/*.c) \
+    $(wildcard ../User/APP/*.c) \
+    $(wildcard ../User/Route/*.c) \
+    $(wildcard ../User/Driver/*.c) \
+    $(wildcard ../User/VL53L1_core/*.c) \
+    $(wildcard ../User/VL53L1_platform/*.c)
 
 OBJECTS = \
     $(patsubst %.c,%.obj,$(notdir $(USER_C_FILES))) \
@@ -55,7 +71,8 @@ CFLAGS = \
     -mthumb \
     -std=c11 \
     -Wall \
-    -Wextra
+    -Wextra \
+    -Werror
 
 LFLAGS = \
     -ldevice.cmd.genlibs \

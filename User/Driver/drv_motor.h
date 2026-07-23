@@ -35,7 +35,11 @@ typedef enum {
     MOTOR_COUNT
 } Motor_Id_t;
 
-/* 当前引脚规划 v1.4：TIM8 PC6~PC9 PWM；PD0~PD9 中部分脚作方向。 */
+/*
+ * MSPM0G3519 引脚规划：
+ *   PWM：TIMA0，FL=PC2、FR=PC4、RL=PC0、RR=PA28；
+ *   方向：PB6/PB7、PB8/PB9、PB20/PB24、PB25/PB27。
+ */
 #define MOTOR_FL_PWM_ID          BSP_PWM_CH1
 #define MOTOR_FR_PWM_ID          BSP_PWM_CH2
 #if (VEHICLE_REAR_DRIVE_ENABLE != 0U)
@@ -43,15 +47,15 @@ typedef enum {
 #define MOTOR_RR_PWM_ID          BSP_PWM_CH4
 #endif
 
-#define MOTOR_FL_IN1_GPIO        BSP_GPIO_CH3   /* PD0 */
-#define MOTOR_FL_IN2_GPIO        BSP_GPIO_CH4   /* PD1 */
-#define MOTOR_FR_IN1_GPIO        BSP_GPIO_CH5   /* PD2 */
-#define MOTOR_FR_IN2_GPIO        BSP_GPIO_CH6   /* PD3 */
+#define MOTOR_FL_IN1_GPIO        BSP_GPIO_CH3   /* PB6 */
+#define MOTOR_FL_IN2_GPIO        BSP_GPIO_CH4   /* PB7 */
+#define MOTOR_FR_IN1_GPIO        BSP_GPIO_CH5   /* PB8 */
+#define MOTOR_FR_IN2_GPIO        BSP_GPIO_CH6   /* PB9 */
 #if (VEHICLE_REAR_DRIVE_ENABLE != 0U)
-#define MOTOR_RL_IN1_GPIO        BSP_GPIO_CH7   /* PD4 */
-#define MOTOR_RL_IN2_GPIO        BSP_GPIO_CH8   /* PD7 */
-#define MOTOR_RR_IN1_GPIO        BSP_GPIO_CH9   /* PD8 */
-#define MOTOR_RR_IN2_GPIO        BSP_GPIO_CH10  /* PD9 */
+#define MOTOR_RL_IN1_GPIO        BSP_GPIO_CH7   /* PB20 */
+#define MOTOR_RL_IN2_GPIO        BSP_GPIO_CH8   /* PB24 */
+#define MOTOR_RR_IN1_GPIO        BSP_GPIO_CH9   /* PB25 */
+#define MOTOR_RR_IN2_GPIO        BSP_GPIO_CH10  /* PB27 */
 #endif
 
 /* 某个电机方向反了，优先改这里，不要在 chassis 里取反。 */

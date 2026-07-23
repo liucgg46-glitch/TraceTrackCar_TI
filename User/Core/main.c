@@ -1,35 +1,30 @@
 #include "ti_msp_dl_config.h"
-#include "bsp_common.h"
-#include "bsp_gpio.h"
-#include "bsp_systick.h"
-
-#define LED1_TOGGLE_PERIOD_MS 500U
+#include "bsp_all.h"
+#include "driver_all.h"
+#include "app_all.h"
+#include "scheduler.h"
 
 int main(void)
 {
-    uint32_t led1_last_toggle_ms = 0U;
-
     SYSCFG_DL_init();
 
-    if (BSP_SysTick_Init(BSP_GetCoreClockHz()) != BSP_OK) {
+    if (BSP_InitAll(BSP_GetCoreClockHz()) != BSP_OK) {
+        /* 初始化失败时保持所有电机 PWM/方向脚的 SysConfig 安全初值。 */
         while (1) {
             __WFI();
         }
     }
 
-    BSP_GPIO_InitAll();
+    /*
+     * 分层启动顺序保持原工程约定：
+     * BSP 只管理 MCU 外设，Driver 管理器件，APP 管理业务，Scheduler 推进任务。
+     */
+    Driver_Init();
+    App_Init();
+    Scheduler_Init();
 
     while (1) {
-        if (BSP_TimeElapsed(&led1_last_toggle_ms, LED1_TOGGLE_PERIOD_MS) != 0U) {
-            BSP_GPIO_Toggle(BSP_GPIO_LED1);
-        }
-
-        /*
-         * USER 键按下时 PB31 为低电平，LED2 也是低电平点亮，
-         * 因此可直接把按键电平写到 LED2。
-         */
-        BSP_GPIO_Write(BSP_GPIO_LED2, BSP_GPIO_Read(BSP_GPIO_USER_KEY));
-
+        Scheduler_Run();
         __WFI();
     }
 }

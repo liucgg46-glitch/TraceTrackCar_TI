@@ -9,8 +9,8 @@ extern "C" {
 #endif
 
 /*
- * 第二阶段只冻结核心板自带资源和外接 ICM20948 的控制脚。
- * 电机、显示、HX711、E220 等外接资源将在完整 PinMux 通过后追加。
+ * MSPM0G3519 核心板及小车外设 GPIO。
+ * 所有真实引脚均由 SysConfig 生成，本层只提供稳定的逻辑编号。
  */
 typedef enum {
     BSP_GPIO_LED1 = 0,
@@ -19,19 +19,49 @@ typedef enum {
     BSP_GPIO_ICM20948_CS,
     BSP_GPIO_ICM20948_INT,
     BSP_GPIO_USER_KEY,
+    BSP_GPIO_MOTOR_FL_IN1,
+    BSP_GPIO_MOTOR_FL_IN2,
+    BSP_GPIO_MOTOR_FR_IN1,
+    BSP_GPIO_MOTOR_FR_IN2,
+    BSP_GPIO_MOTOR_RL_IN1,
+    BSP_GPIO_MOTOR_RL_IN2,
+    BSP_GPIO_MOTOR_RR_IN1,
+    BSP_GPIO_MOTOR_RR_IN2,
+    BSP_GPIO_LCD_CS,
+    BSP_GPIO_LCD_DC,
+    BSP_GPIO_LCD_BL,
+    BSP_GPIO_LCD_RESET,
+    BSP_GPIO_GRAY_S0,
+    BSP_GPIO_GRAY_S1,
+    BSP_GPIO_GRAY_S2,
+    BSP_GPIO_E220_AUX,
+    BSP_GPIO_LASER_EN,
+    BSP_GPIO_HX711_DOUT,
+    BSP_GPIO_HX711_PD_SCK,
+    BSP_GPIO_BUZZER,
     BSP_GPIO_COUNT
 } BSP_GPIO_Id_t;
 
-/* 保持当前已迁移模块使用的旧别名。 */
-#define BSP_GPIO_CH1                BSP_GPIO_LED1
-#define BSP_GPIO_CH2                BSP_GPIO_ICM20948_CS
-#define BSP_GPIO_CH16               BSP_GPIO_ICM20948_CS
-#define BSP_GPIO_CH21               BSP_GPIO_LED1
-#define BSP_GPIO_CH22               BSP_GPIO_LED2
-#define BSP_GPIO_STATUS_RED         BSP_GPIO_LED1
-#define BSP_GPIO_STATUS_GREEN       BSP_GPIO_LED2
+/* 兼容原 STM32 工程已经使用的逻辑别名。 */
+#define BSP_GPIO_CH1                 BSP_GPIO_LED1
+#define BSP_GPIO_CH2                 BSP_GPIO_ICM20948_CS
+#define BSP_GPIO_CH3                 BSP_GPIO_MOTOR_FL_IN1
+#define BSP_GPIO_CH4                 BSP_GPIO_MOTOR_FL_IN2
+#define BSP_GPIO_CH5                 BSP_GPIO_MOTOR_FR_IN1
+#define BSP_GPIO_CH6                 BSP_GPIO_MOTOR_FR_IN2
+#define BSP_GPIO_CH7                 BSP_GPIO_MOTOR_RL_IN1
+#define BSP_GPIO_CH8                 BSP_GPIO_MOTOR_RL_IN2
+#define BSP_GPIO_CH9                 BSP_GPIO_MOTOR_RR_IN1
+#define BSP_GPIO_CH10                BSP_GPIO_MOTOR_RR_IN2
+#define BSP_GPIO_CH16                BSP_GPIO_ICM20948_CS
+#define BSP_GPIO_CH21                BSP_GPIO_LED1
+#define BSP_GPIO_CH22                BSP_GPIO_LED2
+
+#define BSP_GPIO_STATUS_RED          BSP_GPIO_LED1
+#define BSP_GPIO_STATUS_GREEN        BSP_GPIO_LED2
 #define BSP_GPIO_STATUS_RED_ACTIVE_LEVEL    0U
 #define BSP_GPIO_STATUS_GREEN_ACTIVE_LEVEL  0U
+#define BSP_GPIO_BUZZER_ACTIVE_LEVEL         0U
 
 void BSP_GPIO_Init(BSP_GPIO_Id_t id);
 void BSP_GPIO_InitAll(void);

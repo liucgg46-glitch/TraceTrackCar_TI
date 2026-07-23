@@ -377,7 +377,7 @@ static void Test_Key_Send(const char *message, uint16_t length)
 
 /*
  * 五按键最小测试任务：
- *   KEY1=PE4、KEY2=PE3、KEY3=PE2、KEY4=PE1、KEY5=PA15。
+ *   MSPM0 核心板只启用 KEY5=PB31；KEY1~KEY4 暂不分配引脚。
  * Key_Update() 统一完成按键扫描和消抖，本函数只消费按下/松开事件。
  */
 void Test_Key_Update(void)
@@ -386,7 +386,7 @@ void Test_Key_Update(void)
 
     if (banner_sent == 0U) {
         static const char banner[] =
-            "KEY TEST READY: KEY1=PE4 KEY2=PE3 KEY3=PE2 KEY4=PE1 KEY5=PA15\r\n";
+            "KEY TEST READY: KEY1-4 DISABLED KEY5=PB31 USER\r\n";
         Test_Key_Send(banner, (uint16_t)(sizeof(banner) - 1U));
         banner_sent = 1U;
     }
@@ -433,11 +433,11 @@ void Test_Key_Update(void)
 #endif
 #if BSP_KEY5_ENABLE
     if (BSP_Key_WasPressed(BSP_KEY5)) {
-        static const char message[] = "KEY5 PRESSED (PA15)\r\n";
+        static const char message[] = "KEY5 PRESSED (PB31 USER)\r\n";
         Test_Key_Send(message, (uint16_t)(sizeof(message) - 1U));
     }
     if (BSP_Key_WasReleased(BSP_KEY5)) {
-        static const char message[] = "KEY5 RELEASED (PA15)\r\n";
+        static const char message[] = "KEY5 RELEASED (PB31 USER)\r\n";
         Test_Key_Send(message, (uint16_t)(sizeof(message) - 1U));
     }
 #endif

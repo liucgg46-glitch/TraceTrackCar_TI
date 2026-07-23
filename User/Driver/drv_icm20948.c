@@ -565,6 +565,7 @@ static BSP_Status_t ICM20948_AuxSlv0ReadData(uint8_t *data, uint8_t len)
 }
 
 /* SLV4 对比诊断路径，宏关闭 SLV0/SLV1 初始化时使用。 */
+#if (DRV_ICM20948_MAG_INIT_USE_SLV0_SLV1 == 0U)
 static BSP_Status_t ICM20948_AuxStartWrite(uint8_t reg, uint8_t value)
 {
     BSP_Status_t status;
@@ -643,6 +644,8 @@ static BSP_Status_t ICM20948_CheckAuxTimeout(void)
 }
 
 /* ============================== 数据处理 ================================== */
+#endif
+
 static int16_t ICM20948_MakeI16BE(uint8_t high, uint8_t low)
 {
     return (int16_t)((((uint16_t)high) << 8) | (uint16_t)low);

@@ -38,6 +38,7 @@ extern "C" {
 Task_t task_list[] = {                                                              \
     { AppDiagnostics_HeartbeatUpdate, 10U, 0U }, /* 正式运行指示灯 */ \
     { AppTask_BSP_Background,   1U, 0U }, /* BSP和Driver后台维护 */ \
+    { Key_Update,              10U, 0U }, /* PB31 USER/原KEY5扫描与消抖 */ \
     { Sensor_Update,            1U, 0U }, /* HX711非阻塞采样 */ \
     { K210_Comm_Update,         5U, 0U }, /* K210新快照解析 */ \
     { Encoder_Update,          10U, 0U }, /* 轮速反馈与停车确认 */ \

@@ -39,6 +39,7 @@ extern "C" {
 
 /* ============================== 总开关与硬件 ============================== */
 #define DRV_ICM20948_ENABLE                    1U
+/* 仅使用用户外接 ICM20948：PB16 CLK / PB15 MOSI / PB14 MISO / PB12 CS。 */
 #define DRV_ICM20948_SPI_BUS                   SPI_BUS2
 #define DRV_ICM20948_CS_GPIO                   BSP_GPIO_ICM20948_CS
 

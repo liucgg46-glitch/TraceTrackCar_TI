@@ -26,7 +26,7 @@ static uint8_t s_auto_tare_count;
 static void HX711_ClockDelay(void)
 {
     volatile uint32_t count;
-    uint32_t loops = SystemCoreClock / 6000000UL;
+    uint32_t loops = BSP_GetCoreClockHz() / 6000000UL;
 
     if (loops < 2U) {
         loops = 2U;

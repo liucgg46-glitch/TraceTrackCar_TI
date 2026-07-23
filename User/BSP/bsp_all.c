@@ -8,11 +8,11 @@ BSP_Status_t BSP_InitAll(uint32_t system_core_clock_hz)
     if (ret != BSP_OK) return ret;
 
     BSP_GPIO_InitAll();
+    BSP_EXTI_InitAll();
     BSP_PWM_InitAll();
     BSP_Encoder_InitAll();
     BSP_ADC_Init();
     BSP_Key_InitAll();
-    BSP_EXTI_InitAll();
 
     BSP_UART_InitAll();
     BSP_I2C_InitAll();

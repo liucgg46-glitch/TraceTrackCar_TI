@@ -1,275 +1,255 @@
 #include "bsp_encoder.h"
+#include "bsp_exti.h"
 
-/*
- * ============================================================================
- * 通用正交编码器 BSP 实现
- * ============================================================================
- * 本文件不写死 TIMx / GPIOx / AFx。
- * 所有硬件资源都来自 bsp_encoder.h 的配置宏。
- *
- * 关键原则：
- *   - BSP 层只输出原始 count、delta、speed_cps、total；
- *   - 不在这里做轮径换算，不在这里判断左前/右前；
- *   - 四轮映射、左右平均、单位换算放到 drv_encoder / odometer。
- */
+typedef enum {
+    BSP_ENCODER_SOURCE_HARDWARE_QEI = 0,
+    BSP_ENCODER_SOURCE_SOFTWARE_QEI
+} BSP_Encoder_Source_t;
 
 typedef struct {
-    TIM_TypeDef      *tim;
-    BSP_ClockCmdFn_t  tim_clock_fn;
-    uint32_t          tim_clock_mask;
-
-    GPIO_TypeDef     *port_a;
-    uint16_t          pin_a;
-    uint8_t           pinsrc_a;
-
-    GPIO_TypeDef     *port_b;
-    uint16_t          pin_b;
-    uint8_t           pinsrc_b;
-
-    uint8_t           af;
-    uint16_t          period;
-    uint8_t           reverse;
+    uint8_t enabled;
+    BSP_Encoder_Source_t source;
+    GPTIMER_Regs *timer;
+    GPIO_Regs *gpio_port;
+    uint32_t pin_a;
+    uint32_t pin_b;
+    uint8_t reverse;
 } BSP_Encoder_Cfg_t;
 
 typedef struct {
-    uint16_t last_counter;
-    int16_t  delta_count;
-    int32_t  total_count;
-    int32_t  speed_cps;
+    uint16_t last_hardware_counter;
+    int32_t last_software_counter;
+    volatile int32_t software_counter;
+    volatile uint8_t previous_state;
+    int16_t delta_count;
+    int32_t total_count;
+    int32_t speed_cps;
     uint32_t last_update_ms;
     uint32_t update_time_ms;
-    uint8_t  initialized;
+    uint8_t initialized;
 } BSP_Encoder_Runtime_t;
 
 static const BSP_Encoder_Cfg_t s_enc_cfg[BSP_ENCODER_COUNT] = {
-#if BSP_ENCODER_CH1_ENABLE
     [BSP_ENCODER_CH1] = {
-        BSP_ENCODER_CH1_TIM,
-        BSP_ENCODER_CH1_TIM_CLOCK_FN,
-        BSP_ENCODER_CH1_TIM_CLOCK_MASK,
-        BSP_ENCODER_CH1_GPIO_PORT_A,
-        BSP_ENCODER_CH1_GPIO_PIN_A,
-        BSP_ENCODER_CH1_GPIO_PINSRC_A,
-        BSP_ENCODER_CH1_GPIO_PORT_B,
-        BSP_ENCODER_CH1_GPIO_PIN_B,
-        BSP_ENCODER_CH1_GPIO_PINSRC_B,
-        BSP_ENCODER_CH1_GPIO_AF,
-        BSP_ENCODER_CH1_PERIOD,
+        BSP_ENCODER_CH1_ENABLE,
+        BSP_ENCODER_SOURCE_HARDWARE_QEI,
+        QEI_FRONT_LEFT_INST,
+        (GPIO_Regs *)0,
+        0U,
+        0U,
         BSP_ENCODER_CH1_REVERSE
     },
-#endif
-#if BSP_ENCODER_CH2_ENABLE
     [BSP_ENCODER_CH2] = {
-        BSP_ENCODER_CH2_TIM,
-        BSP_ENCODER_CH2_TIM_CLOCK_FN,
-        BSP_ENCODER_CH2_TIM_CLOCK_MASK,
-        BSP_ENCODER_CH2_GPIO_PORT_A,
-        BSP_ENCODER_CH2_GPIO_PIN_A,
-        BSP_ENCODER_CH2_GPIO_PINSRC_A,
-        BSP_ENCODER_CH2_GPIO_PORT_B,
-        BSP_ENCODER_CH2_GPIO_PIN_B,
-        BSP_ENCODER_CH2_GPIO_PINSRC_B,
-        BSP_ENCODER_CH2_GPIO_AF,
-        BSP_ENCODER_CH2_PERIOD,
+        BSP_ENCODER_CH2_ENABLE,
+        BSP_ENCODER_SOURCE_HARDWARE_QEI,
+        QEI_FRONT_RIGHT_INST,
+        (GPIO_Regs *)0,
+        0U,
+        0U,
         BSP_ENCODER_CH2_REVERSE
     },
-#endif
-#if BSP_ENCODER_CH3_ENABLE
     [BSP_ENCODER_CH3] = {
-        BSP_ENCODER_CH3_TIM,
-        BSP_ENCODER_CH3_TIM_CLOCK_FN,
-        BSP_ENCODER_CH3_TIM_CLOCK_MASK,
-        BSP_ENCODER_CH3_GPIO_PORT_A,
-        BSP_ENCODER_CH3_GPIO_PIN_A,
-        BSP_ENCODER_CH3_GPIO_PINSRC_A,
-        BSP_ENCODER_CH3_GPIO_PORT_B,
-        BSP_ENCODER_CH3_GPIO_PIN_B,
-        BSP_ENCODER_CH3_GPIO_PINSRC_B,
-        BSP_ENCODER_CH3_GPIO_AF,
-        BSP_ENCODER_CH3_PERIOD,
+        BSP_ENCODER_CH3_ENABLE,
+        BSP_ENCODER_SOURCE_SOFTWARE_QEI,
+        (GPTIMER_Regs *)0,
+        GPIO_BOARD_IO_PORT,
+        GPIO_BOARD_IO_ENCODER_RL_A_PIN,
+        GPIO_BOARD_IO_ENCODER_RL_B_PIN,
         BSP_ENCODER_CH3_REVERSE
     },
-#endif
-#if BSP_ENCODER_CH4_ENABLE
     [BSP_ENCODER_CH4] = {
-        BSP_ENCODER_CH4_TIM,
-        BSP_ENCODER_CH4_TIM_CLOCK_FN,
-        BSP_ENCODER_CH4_TIM_CLOCK_MASK,
-        BSP_ENCODER_CH4_GPIO_PORT_A,
-        BSP_ENCODER_CH4_GPIO_PIN_A,
-        BSP_ENCODER_CH4_GPIO_PINSRC_A,
-        BSP_ENCODER_CH4_GPIO_PORT_B,
-        BSP_ENCODER_CH4_GPIO_PIN_B,
-        BSP_ENCODER_CH4_GPIO_PINSRC_B,
-        BSP_ENCODER_CH4_GPIO_AF,
-        BSP_ENCODER_CH4_PERIOD,
+        BSP_ENCODER_CH4_ENABLE,
+        BSP_ENCODER_SOURCE_SOFTWARE_QEI,
+        (GPTIMER_Regs *)0,
+        GPIO_BOARD_IO_PORT,
+        GPIO_BOARD_IO_ENCODER_RR_A_PIN,
+        GPIO_BOARD_IO_ENCODER_RR_B_PIN,
         BSP_ENCODER_CH4_REVERSE
-    },
-#endif
+    }
 };
 
 static volatile BSP_Encoder_Runtime_t s_enc_rt[BSP_ENCODER_COUNT];
 
-void BSP_Encoder_Init(BSP_Encoder_Id_t id)
-{
-    const BSP_Encoder_Cfg_t *cfg;
-    GPIO_InitTypeDef gpio;
-    TIM_TimeBaseInitTypeDef tim_base;
-    TIM_ICInitTypeDef tim_ic;
+/*
+ * 状态编码为 A:B，A 是高位。每个合法格雷码边沿计数一次；
+ * 两位同时变化视为毛刺或丢边沿，不累计。
+ */
+static const int8_t s_quadrature_step[16] = {
+     0,  1, -1,  0,
+    -1,  0,  0,  1,
+     1,  0,  0, -1,
+     0, -1,  1,  0
+};
 
-    if (id >= BSP_ENCODER_COUNT) {
+static uint8_t Encoder_IsAvailable(BSP_Encoder_Id_t id)
+{
+    if ((id >= BSP_ENCODER_COUNT) || (s_enc_cfg[id].enabled == 0U)) {
+        return 0U;
+    }
+
+    if (s_enc_cfg[id].source == BSP_ENCODER_SOURCE_HARDWARE_QEI) {
+        return (s_enc_cfg[id].timer != (GPTIMER_Regs *)0) ? 1U : 0U;
+    }
+
+    return (s_enc_cfg[id].gpio_port != (GPIO_Regs *)0) ? 1U : 0U;
+}
+
+static uint8_t Encoder_ReadSoftwareState(BSP_Encoder_Id_t id)
+{
+    uint32_t pins;
+    uint8_t state = 0U;
+
+    pins = DL_GPIO_readPins(
+        s_enc_cfg[id].gpio_port,
+        s_enc_cfg[id].pin_a | s_enc_cfg[id].pin_b);
+    if ((pins & s_enc_cfg[id].pin_a) != 0U) {
+        state |= 2U;
+    }
+    if ((pins & s_enc_cfg[id].pin_b) != 0U) {
+        state |= 1U;
+    }
+    return state;
+}
+
+static void Encoder_DecodeSoftwareEdge(BSP_Encoder_Id_t id)
+{
+    uint8_t current_state;
+    uint8_t transition;
+
+    if ((Encoder_IsAvailable(id) == 0U) ||
+        (s_enc_cfg[id].source != BSP_ENCODER_SOURCE_SOFTWARE_QEI)) {
         return;
     }
 
-    cfg = &s_enc_cfg[id];
+    current_state = Encoder_ReadSoftwareState(id);
+    transition =
+        (uint8_t)((s_enc_rt[id].previous_state << 2U) | current_state);
+    s_enc_rt[id].previous_state = current_state;
+    s_enc_rt[id].software_counter += s_quadrature_step[transition];
+}
 
-    BSP_GPIO_ClockEnable(cfg->port_a);
-    BSP_GPIO_ClockEnable(cfg->port_b);
-    cfg->tim_clock_fn(cfg->tim_clock_mask, ENABLE);
+void BSP_Encoder_Init(BSP_Encoder_Id_t id)
+{
+    uint32_t now;
 
-    GPIO_PinAFConfig(cfg->port_a, cfg->pinsrc_a, cfg->af);
-    GPIO_PinAFConfig(cfg->port_b, cfg->pinsrc_b, cfg->af);
+    if (Encoder_IsAvailable(id) == 0U) {
+        return;
+    }
 
-    GPIO_StructInit(&gpio);
-    gpio.GPIO_Mode  = GPIO_Mode_AF;
-    gpio.GPIO_OType = GPIO_OType_PP;
-    gpio.GPIO_PuPd  = GPIO_PuPd_UP;
-    gpio.GPIO_Speed = GPIO_Speed_100MHz;
+    now = BSP_GET_TICK();
+    if (s_enc_cfg[id].source == BSP_ENCODER_SOURCE_HARDWARE_QEI) {
+        s_enc_rt[id].last_hardware_counter =
+            (uint16_t)DL_TimerG_getTimerCount(s_enc_cfg[id].timer);
+    } else {
+        s_enc_rt[id].software_counter      = 0;
+        s_enc_rt[id].last_software_counter = 0;
+        s_enc_rt[id].previous_state = Encoder_ReadSoftwareState(id);
+    }
 
-    gpio.GPIO_Pin = cfg->pin_a;
-    GPIO_Init(cfg->port_a, &gpio);
-
-    gpio.GPIO_Pin = cfg->pin_b;
-    GPIO_Init(cfg->port_b, &gpio);
-
-    TIM_DeInit(cfg->tim);
-
-    TIM_TimeBaseStructInit(&tim_base);
-    tim_base.TIM_Prescaler     = 0U;
-    tim_base.TIM_CounterMode   = TIM_CounterMode_Up;
-    tim_base.TIM_Period        = cfg->period;
-    tim_base.TIM_ClockDivision = TIM_CKD_DIV1;
-    TIM_TimeBaseInit(cfg->tim, &tim_base);
-
-    /*
-     * 编码器模式 TI12：CH1 和 CH2 都参与计数。
-     * 极性默认 Rising。如果实际方向反了，不改极性，优先改 BSP_ENCODER_CHx_REVERSE。
-     */
-    TIM_EncoderInterfaceConfig(cfg->tim,
-                               TIM_EncoderMode_TI12,
-                               TIM_ICPolarity_Rising,
-                               TIM_ICPolarity_Rising);
-
-    /* 输入滤波：抑制编码器毛刺。若高速编码器丢脉冲，可把 Filter 改小。 */
-    TIM_ICStructInit(&tim_ic);
-    tim_ic.TIM_ICFilter = 6U;
-
-    tim_ic.TIM_Channel = TIM_Channel_1;
-    TIM_ICInit(cfg->tim, &tim_ic);
-
-    tim_ic.TIM_Channel = TIM_Channel_2;
-    TIM_ICInit(cfg->tim, &tim_ic);
-
-    TIM_SetCounter(cfg->tim, 0U);
-    TIM_ClearFlag(cfg->tim, TIM_FLAG_Update);
-    TIM_Cmd(cfg->tim, ENABLE);
-
-    s_enc_rt[id].last_counter   = 0U;
     s_enc_rt[id].delta_count    = 0;
     s_enc_rt[id].total_count    = 0;
     s_enc_rt[id].speed_cps      = 0;
-    s_enc_rt[id].last_update_ms = BSP_GET_TICK();
-    s_enc_rt[id].update_time_ms = s_enc_rt[id].last_update_ms;
+    s_enc_rt[id].last_update_ms = now;
+    s_enc_rt[id].update_time_ms = now;
     s_enc_rt[id].initialized    = 1U;
 }
 
 void BSP_Encoder_InitAll(void)
 {
     BSP_Encoder_Id_t id;
+    uint32_t software_pins =
+        GPIO_BOARD_IO_ENCODER_RL_A_PIN |
+        GPIO_BOARD_IO_ENCODER_RL_B_PIN |
+        GPIO_BOARD_IO_ENCODER_RR_A_PIN |
+        GPIO_BOARD_IO_ENCODER_RR_B_PIN;
 
-    for (id = (BSP_Encoder_Id_t)0; id < BSP_ENCODER_COUNT; id = (BSP_Encoder_Id_t)(id + 1)) {
+    for (id = (BSP_Encoder_Id_t)0; id < BSP_ENCODER_COUNT;
+         id = (BSP_Encoder_Id_t)(id + 1)) {
         BSP_Encoder_Init(id);
+    }
+
+    if ((BSP_ENCODER_CH3_ENABLE != 0U) ||
+        (BSP_ENCODER_CH4_ENABLE != 0U)) {
+        DL_GPIO_clearInterruptStatus(GPIO_BOARD_IO_PORT, software_pins);
+        NVIC_ClearPendingIRQ(GPIO_BOARD_IO_INT_IRQN);
+        NVIC_EnableIRQ(GPIO_BOARD_IO_INT_IRQN);
     }
 }
 
 void BSP_Encoder_Update(BSP_Encoder_Id_t id)
 {
-    const BSP_Encoder_Cfg_t *cfg;
-    uint16_t now_cnt;
+    int32_t current_count;
+    int32_t delta_32;
     int16_t delta;
-    uint32_t now_ms;
-    uint32_t dt_ms;
+    uint32_t now;
+    uint32_t elapsed_ms;
 
-    if (id >= BSP_ENCODER_COUNT) {
+    if ((Encoder_IsAvailable(id) == 0U) ||
+        (s_enc_rt[id].initialized == 0U)) {
         return;
     }
 
-    if (s_enc_rt[id].initialized == 0U) {
-        return;
+    if (s_enc_cfg[id].source == BSP_ENCODER_SOURCE_HARDWARE_QEI) {
+        uint16_t hardware_counter =
+            (uint16_t)DL_TimerG_getTimerCount(s_enc_cfg[id].timer);
+        delta = (int16_t)(
+            hardware_counter - s_enc_rt[id].last_hardware_counter);
+        s_enc_rt[id].last_hardware_counter = hardware_counter;
+    } else {
+        current_count = s_enc_rt[id].software_counter;
+        delta_32 = current_count - s_enc_rt[id].last_software_counter;
+        s_enc_rt[id].last_software_counter = current_count;
+
+        if (delta_32 > INT16_MAX) {
+            delta = INT16_MAX;
+        } else if (delta_32 < INT16_MIN) {
+            delta = INT16_MIN;
+        } else {
+            delta = (int16_t)delta_32;
+        }
     }
 
-    cfg = &s_enc_cfg[id];
-
-    now_cnt = (uint16_t)TIM_GetCounter(cfg->tim);
-
-    /*
-     * 16bit 差值自然处理溢出：
-     * 例如 last=65530, now=5，now-last 转 int16_t 后仍能得到正确的小增量。
-     */
-    delta = (int16_t)(now_cnt - s_enc_rt[id].last_counter);
-    s_enc_rt[id].last_counter = now_cnt;
-
-    if (cfg->reverse) {
-        delta = (int16_t)(-delta);
+    if (s_enc_cfg[id].reverse != 0U) {
+        delta = (delta == INT16_MIN) ? INT16_MAX : (int16_t)(-delta);
     }
 
-    now_ms = BSP_GET_TICK();
-    dt_ms = now_ms - s_enc_rt[id].last_update_ms;
-    if (dt_ms == 0U) {
-        dt_ms = BSP_ENCODER_UPDATE_PERIOD_MS;
+    now = BSP_GET_TICK();
+    elapsed_ms = now - s_enc_rt[id].last_update_ms;
+    if (elapsed_ms == 0U) {
+        elapsed_ms = BSP_ENCODER_UPDATE_PERIOD_MS;
     }
 
     s_enc_rt[id].delta_count = delta;
     s_enc_rt[id].total_count += delta;
-    s_enc_rt[id].speed_cps = ((int32_t)delta * 1000L) / (int32_t)dt_ms;
-    s_enc_rt[id].last_update_ms = now_ms;
-    s_enc_rt[id].update_time_ms = now_ms;
+    s_enc_rt[id].speed_cps =
+        ((int32_t)delta * 1000L) / (int32_t)elapsed_ms;
+    s_enc_rt[id].last_update_ms = now;
+    s_enc_rt[id].update_time_ms = now;
 }
 
 void BSP_Encoder_UpdateAll(void)
 {
     BSP_Encoder_Id_t id;
 
-    for (id = (BSP_Encoder_Id_t)0; id < BSP_ENCODER_COUNT; id = (BSP_Encoder_Id_t)(id + 1)) {
+    for (id = (BSP_Encoder_Id_t)0; id < BSP_ENCODER_COUNT;
+         id = (BSP_Encoder_Id_t)(id + 1)) {
         BSP_Encoder_Update(id);
     }
 }
 
 int16_t BSP_Encoder_GetDelta(BSP_Encoder_Id_t id)
 {
-    if (id >= BSP_ENCODER_COUNT) {
-        return 0;
-    }
-
-    return s_enc_rt[id].delta_count;
+    return (id < BSP_ENCODER_COUNT) ? s_enc_rt[id].delta_count : 0;
 }
 
 int32_t BSP_Encoder_GetSpeedCps(BSP_Encoder_Id_t id)
 {
-    if (id >= BSP_ENCODER_COUNT) {
-        return 0;
-    }
-
-    return s_enc_rt[id].speed_cps;
+    return (id < BSP_ENCODER_COUNT) ? s_enc_rt[id].speed_cps : 0;
 }
 
 int32_t BSP_Encoder_GetTotal(BSP_Encoder_Id_t id)
 {
-    if (id >= BSP_ENCODER_COUNT) {
-        return 0;
-    }
-
-    return s_enc_rt[id].total_count;
+    return (id < BSP_ENCODER_COUNT) ? s_enc_rt[id].total_count : 0;
 }
 
 void BSP_Encoder_ClearTotal(BSP_Encoder_Id_t id)
@@ -284,7 +264,16 @@ void BSP_Encoder_ClearTotal(BSP_Encoder_Id_t id)
     s_enc_rt[id].total_count = 0;
     s_enc_rt[id].delta_count = 0;
     s_enc_rt[id].speed_cps   = 0;
-    s_enc_rt[id].last_counter = (uint16_t)TIM_GetCounter(s_enc_cfg[id].tim);
+
+    if (Encoder_IsAvailable(id) != 0U) {
+        if (s_enc_cfg[id].source == BSP_ENCODER_SOURCE_HARDWARE_QEI) {
+            s_enc_rt[id].last_hardware_counter =
+                (uint16_t)DL_TimerG_getTimerCount(s_enc_cfg[id].timer);
+        } else {
+            s_enc_rt[id].last_software_counter =
+                s_enc_rt[id].software_counter;
+        }
+    }
     BSP_ExitCritical(primask);
 }
 
@@ -292,14 +281,16 @@ void BSP_Encoder_ClearAllTotal(void)
 {
     BSP_Encoder_Id_t id;
 
-    for (id = (BSP_Encoder_Id_t)0; id < BSP_ENCODER_COUNT; id = (BSP_Encoder_Id_t)(id + 1)) {
+    for (id = (BSP_Encoder_Id_t)0; id < BSP_ENCODER_COUNT;
+         id = (BSP_Encoder_Id_t)(id + 1)) {
         BSP_Encoder_ClearTotal(id);
     }
 }
 
-BSP_Status_t BSP_Encoder_GetInfo(BSP_Encoder_Id_t id, BSP_Encoder_Info_t *info)
+BSP_Status_t BSP_Encoder_GetInfo(
+    BSP_Encoder_Id_t id, BSP_Encoder_Info_t *info)
 {
-    if (id >= BSP_ENCODER_COUNT || info == 0) {
+    if ((id >= BSP_ENCODER_COUNT) || (info == (BSP_Encoder_Info_t *)0)) {
         return BSP_PARAM;
     }
 
@@ -307,6 +298,37 @@ BSP_Status_t BSP_Encoder_GetInfo(BSP_Encoder_Id_t id, BSP_Encoder_Info_t *info)
     info->total_count    = s_enc_rt[id].total_count;
     info->speed_cps      = s_enc_rt[id].speed_cps;
     info->update_time_ms = s_enc_rt[id].update_time_ms;
-
     return BSP_OK;
+}
+
+void GROUP1_IRQHandler(void)
+{
+    uint32_t pending;
+    uint32_t rear_left_pins =
+        GPIO_BOARD_IO_ENCODER_RL_A_PIN |
+        GPIO_BOARD_IO_ENCODER_RL_B_PIN;
+    uint32_t rear_right_pins =
+        GPIO_BOARD_IO_ENCODER_RR_A_PIN |
+        GPIO_BOARD_IO_ENCODER_RR_B_PIN;
+    uint32_t encoder_pins = rear_left_pins | rear_right_pins;
+    uint32_t exti_pins = BSP_EXTI_GetEnabledPins(GPIO_BOARD_IO_PORT);
+    uint32_t handled_pins = encoder_pins | exti_pins;
+
+    if (DL_Interrupt_getPendingGroup(DL_INTERRUPT_GROUP_1) !=
+        GPIO_BOARD_IO_INT_IIDX) {
+        return;
+    }
+
+    pending = DL_GPIO_getEnabledInterruptStatus(
+        GPIO_BOARD_IO_PORT, handled_pins);
+    DL_GPIO_clearInterruptStatus(GPIO_BOARD_IO_PORT, pending);
+
+    if ((pending & rear_left_pins) != 0U) {
+        Encoder_DecodeSoftwareEdge(BSP_ENCODER_CH3);
+    }
+    if ((pending & rear_right_pins) != 0U) {
+        Encoder_DecodeSoftwareEdge(BSP_ENCODER_CH4);
+    }
+
+    BSP_EXTI_DispatchIRQ(pending & exti_pins);
 }

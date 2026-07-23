@@ -18,6 +18,7 @@ static void LineCalibration_Send(const char *message, uint16_t length)
                               length);
 }
 
+#if (BSP_KEY1_ENABLE || BSP_KEY2_ENABLE)
 static void LineCalibration_PrintSample(const char *name,
                                         const uint16_t sample[LINE_DETECT_SENSOR_NUM])
 {
@@ -40,7 +41,9 @@ static void LineCalibration_PrintSample(const char *name,
         LineCalibration_Send(buf, (uint16_t)n);
     }
 }
+#endif
 
+#if BSP_KEY3_ENABLE
 static void LineCalibration_PrintThresholdDefines(
     const uint16_t threshold[LINE_DETECT_SENSOR_NUM])
 {
@@ -59,7 +62,9 @@ static void LineCalibration_PrintThresholdDefines(
         }
     }
 }
+#endif
 
+#if (BSP_KEY1_ENABLE || BSP_KEY2_ENABLE)
 static uint8_t LineCalibration_ReadGray(
     uint16_t sample[LINE_DETECT_SENSOR_NUM])
 {
@@ -70,11 +75,16 @@ static uint8_t LineCalibration_ReadGray(
                          sample,
                          LINE_DETECT_SENSOR_NUM) == BSP_OK);
 }
+#endif
 
 void LineCalibration_Update(void)
 {
+#if (BSP_KEY1_ENABLE || BSP_KEY2_ENABLE)
     uint16_t sample[LINE_DETECT_SENSOR_NUM];
+#endif
+#if BSP_KEY3_ENABLE
     uint16_t threshold[LINE_DETECT_SENSOR_NUM];
+#endif
 
     if (s_line_cal_started == 0U) {
         static const char banner[] =

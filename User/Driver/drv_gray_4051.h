@@ -31,6 +31,7 @@ extern "C" {
 #define DRV_GRAY_4051_CHANNEL_NUM         8U
 
 /* 4051 OUT/SIG/AO 接到哪一路 BSP_ADC。当前规划：PC0 / ADC1_IN10 / BSP_ADC_CH1。 */
+/* 4051 OUT/SIG/AO 接 PA25（ADC0 通道 2）。 */
 #define DRV_GRAY_4051_ADC_CH              BSP_ADC_CH1
 
 /* 选通后等待 ADC 稳定的时间。1ms 对普通灰度模块足够，太大则刷新变慢。 */
