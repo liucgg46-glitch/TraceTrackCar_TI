@@ -2,19 +2,74 @@
  * These arguments were used when this file was generated. They will be automatically applied on subsequent loads
  * via the GUI or CLI. Run CLI with '--help' for additional information on how to override these arguments.
  */
-//@cliArgs --device "MSPM0G351X" --package "LQFP-100(PZ)" --part "Default"
-//@v2CliArgs --device "MSPM0G3519" --package "LQFP-100(PZ)"
+//@cliArgs --device "MSPM0G351X" --package "LQFP-80(PN)" --part "Default"
+//@v2CliArgs --device "MSPM0G3519" --package "LQFP-80(PN)"
 
 /**
  * Import the modules used in this configuration.
  */
-const SYSCTL = scripting.addModule("/ti/driverlib/SYSCTL");
+const Board         = scripting.addModule("/ti/driverlib/Board", {}, false);
+const GPIO          = scripting.addModule("/ti/driverlib/GPIO", {}, false);
+const GPIOA_BOARD   = GPIO.addInstance();
+const GPIOB_BOARD   = GPIO.addInstance();
+const SYSCTL        = scripting.addModule("/ti/driverlib/SYSCTL");
+const SYSTICK       = scripting.addModule("/ti/driverlib/SYSTICK");
 const ProjectConfig = scripting.addModule("/ti/project_config/ProjectConfig");
 
 /**
  * Write custom configuration values to the imported modules.
  */
 
-const Board = scripting.addModule("/ti/driverlib/Board", {}, false);
+Board.peripheral.$assign          = "DEBUGSS";
+Board.peripheral.swclkPin.$assign = "PA20";
+Board.peripheral.swdioPin.$assign = "PA19";
+
+GPIOA_BOARD.$name = "GPIO_BOARD_OUTPUTS";
+GPIOA_BOARD.port  = "PORTA";
+GPIOA_BOARD.associatedPins.create(3);
+
+GPIOA_BOARD.associatedPins[0].$name        = "LED1";
+GPIOA_BOARD.associatedPins[0].assignedPin  = "14";
+GPIOA_BOARD.associatedPins[0].initialValue = "SET";
+GPIOA_BOARD.associatedPins[0].pin.$assign  = "PA14";
+
+GPIOA_BOARD.associatedPins[1].$name        = "LED2";
+GPIOA_BOARD.associatedPins[1].assignedPin  = "17";
+GPIOA_BOARD.associatedPins[1].initialValue = "SET";
+GPIOA_BOARD.associatedPins[1].pin.$assign  = "PA17";
+
+GPIOA_BOARD.associatedPins[2].$name        = "RGB_DATA";
+GPIOA_BOARD.associatedPins[2].assignedPin  = "29";
+GPIOA_BOARD.associatedPins[2].initialValue = "CLEARED";
+GPIOA_BOARD.associatedPins[2].pin.$assign  = "PA29";
+
+GPIOB_BOARD.$name = "GPIO_BOARD_IO";
+GPIOB_BOARD.port  = "PORTB";
+GPIOB_BOARD.associatedPins.create(3);
+
+GPIOB_BOARD.associatedPins[0].$name        = "ICM20948_CS";
+GPIOB_BOARD.associatedPins[0].assignedPin  = "12";
+GPIOB_BOARD.associatedPins[0].initialValue = "SET";
+GPIOB_BOARD.associatedPins[0].pin.$assign  = "PB12";
+
+GPIOB_BOARD.associatedPins[1].$name       = "ICM20948_INT";
+GPIOB_BOARD.associatedPins[1].assignedPin = "21";
+GPIOB_BOARD.associatedPins[1].direction   = "INPUT";
+GPIOB_BOARD.associatedPins[1].pin.$assign = "PB21";
+
+GPIOB_BOARD.associatedPins[2].$name            = "USER_KEY";
+GPIOB_BOARD.associatedPins[2].assignedPin      = "31";
+GPIOB_BOARD.associatedPins[2].direction        = "INPUT";
+GPIOB_BOARD.associatedPins[2].internalResistor = "PULL_UP";
+GPIOB_BOARD.associatedPins[2].pin.$assign      = "PB31";
+
+SYSCTL.forceDefaultClkConfig = true;
+SYSCTL.clockTreeEn           = true;
+
+/* 32 MHz 默认系统时钟下，32000 个周期产生 1 ms 系统节拍。 */
+SYSTICK.period          = 32000;
+SYSTICK.periodEnable    = true;
+SYSTICK.systickEnable   = true;
+SYSTICK.interruptEnable = true;
 
 ProjectConfig.deviceSpin = "MSPM0G3519";

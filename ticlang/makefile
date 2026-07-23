@@ -1,6 +1,14 @@
 MSPM0_SDK_INSTALL_DIR ?= D:/TI/CCS/mspm0_sdk_2_11_00_07
 
+ifneq ($(wildcard $(MSPM0_SDK_INSTALL_DIR)/imports.mak),)
 include $(MSPM0_SDK_INSTALL_DIR)/imports.mak
+else
+TICLANG_ARMCOMPILER ?= D:/TI/CCS/ccs/tools/compiler/ti-cgt-armllvm_5.1.1.LTS
+SYSCONFIG_TOOL ?= D:/TI/CCS/ccs/utils/sysconfig_1.28.0/sysconfig_cli.bat
+RM = cmd /c del /f /q
+DEVNULL = NUL
+SLASH_FIXUP = $(subst /,\,$1)
+endif
 
 CC = "$(TICLANG_ARMCOMPILER)/bin/tiarmclang"
 LNK = "$(TICLANG_ARMCOMPILER)/bin/tiarmclang"
@@ -10,19 +18,33 @@ SYSCFG_FILES := $(shell $(SYSCFG_CMD_STUB) --listGeneratedFiles --listReferenced
 
 SYSCFG_C_FILES = $(filter %.c,$(SYSCFG_FILES))
 SYSCFG_H_FILES = $(filter %.h,$(SYSCFG_FILES))
+SYSCFG_OPT_FILES = $(filter %.opt,$(SYSCFG_FILES))
 
-OBJECTS = main.obj ticlang_startup_mspm0g3519_ticlang.obj $(patsubst %.c,%.obj,$(notdir $(SYSCFG_C_FILES)))
-NAME = empty_mspm0g3519
+USER_C_FILES = \
+    ../User/Core/main.c \
+    ../User/BSP/bsp_common.c \
+    ../User/BSP/bsp_systick.c \
+    ../User/BSP/bsp_gpio.c
 
-CFLAGS = -I.. \
+OBJECTS = \
+    $(patsubst %.c,%.obj,$(notdir $(USER_C_FILES))) \
+    $(patsubst %.c,%.obj,$(notdir $(SYSCFG_C_FILES)))
+
+NAME = TraceTrackCar_TI
+
+CFLAGS = \
     -I. \
     -I../User/Core \
     -I../User/Config \
+    -I../User/Common \
     -I../User/APP \
     -I../User/BSP \
     -I../User/Driver \
     -I../User/Algorithm \
-    -D__MSPM0G3519__ \
+    -I../User/Route \
+    -I../User/VL53L1_core \
+    -I../User/VL53L1_platform \
+    $(addprefix @,$(SYSCFG_OPT_FILES)) \
     -O2 \
     "-I$(MSPM0_SDK_INSTALL_DIR)/source/third_party/CMSIS/Core/Include" \
     "-I$(MSPM0_SDK_INSTALL_DIR)/source" \
@@ -30,15 +52,24 @@ CFLAGS = -I.. \
     -mcpu=cortex-m0plus \
     -march=thumbv6m \
     -mfloat-abi=soft \
-    -mthumb
+    -mthumb \
+    -std=c11 \
+    -Wall \
+    -Wextra
 
-LFLAGS = "-l$(MSPM0_SDK_INSTALL_DIR)/source/ti/driverlib/lib/ticlang/m0p/mspm0gx51x/driverlib.a" \
-    ../ticlang/mspm0g3519.cmd \
+LFLAGS = \
+    -ldevice.cmd.genlibs \
+    "-L$(MSPM0_SDK_INSTALL_DIR)/source" \
+    -L. \
+    device_linker.cmd \
     "-Wl,-m,$(NAME).map" \
     -Wl,--rom_model \
     -Wl,--warn_sections \
     "-L$(TICLANG_ARMCOMPILER)/lib" \
     -llibc.a
+
+.PHONY: all clean syscfg
+
 all: $(NAME).out
 
 .INTERMEDIATE: syscfg
@@ -56,22 +87,15 @@ $(basename $(notdir $(1))).obj: $(1) $(SYSCFG_H_FILES)
 endef
 
 $(foreach c_file,$(SYSCFG_C_FILES),$(eval $(call C_RULE,$(c_file))))
-
-main.obj: ../User/Core/main.c $(SYSCFG_H_FILES)
-	@ echo Building $@
-	@ $(CC) $(CFLAGS) -c $< -o $@
-
-ticlang_startup_mspm0g3519_ticlang.obj: ../ticlang/startup_mspm0g3519_ticlang.c $(SYSCFG_H_FILES)
-	@ echo Building $@
-	@ $(CC) $(CFLAGS) -c $< -o $@
+$(foreach c_file,$(USER_C_FILES),$(eval $(call C_RULE,$(c_file))))
 
 $(NAME).out: $(OBJECTS)
-	@ echo linking $@
-	@ $(LNK) -Wl,-u,_c_int00 $(OBJECTS)  $(LFLAGS) -o $(NAME).out
+	@ echo Linking $@
+	@ $(LNK) -Wl,-u,_c_int00 $(OBJECTS) $(LFLAGS) -o $@
 
 clean:
 	@ echo Cleaning...
-	@ $(RM) $(OBJECTS) > $(DEVNULL) 2>&1
-	@ $(RM) $(NAME).out > $(DEVNULL) 2>&1
-	@ $(RM) $(NAME).map > $(DEVNULL) 2>&1
-	@ $(RM) $(SYSCFG_FILES)> $(DEVNULL) 2>&1
+	-@ $(RM) $(call SLASH_FIXUP,$(OBJECTS)) > $(DEVNULL) 2>&1
+	-@ $(RM) $(NAME).out > $(DEVNULL) 2>&1
+	-@ $(RM) $(NAME).map > $(DEVNULL) 2>&1
+	-@ $(RM) $(call SLASH_FIXUP,$(SYSCFG_FILES)) > $(DEVNULL) 2>&1

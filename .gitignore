@@ -53,6 +53,13 @@ cmake_install.cmake
 # =============================================================================
 **/.launches/
 **/.metadata/
+ticlang/Event.dot
+ticlang/device.cmd.genlibs
+ticlang/device.opt
+ticlang/device_linker.cmd
+ticlang/ti_msp_dl_config.c
+ticlang/ti_msp_dl_config.h
+tmp/
 
 # =============================================================================
 # Debugger logs and temporary files

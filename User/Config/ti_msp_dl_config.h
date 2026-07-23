@@ -73,7 +73,37 @@ extern "C" {
 #define POWER_STARTUP_DELAY                                                (16)
 
 
+
 #define CPUCLK_FREQ                                                     32000000
+
+
+
+
+/* Port definition for Pin Group GPIO_BOARD_OUTPUTS */
+#define GPIO_BOARD_OUTPUTS_PORT                                          (GPIOA)
+
+/* Defines for LED1: GPIOA.14 with pinCMx 36 on package pin 43 */
+#define GPIO_BOARD_OUTPUTS_LED1_PIN                             (DL_GPIO_PIN_14)
+#define GPIO_BOARD_OUTPUTS_LED1_IOMUX                            (IOMUX_PINCM36)
+/* Defines for LED2: GPIOA.17 with pinCMx 39 on package pin 54 */
+#define GPIO_BOARD_OUTPUTS_LED2_PIN                             (DL_GPIO_PIN_17)
+#define GPIO_BOARD_OUTPUTS_LED2_IOMUX                            (IOMUX_PINCM39)
+/* Defines for RGB_DATA: GPIOA.29 with pinCMx 4 on package pin 4 */
+#define GPIO_BOARD_OUTPUTS_RGB_DATA_PIN                         (DL_GPIO_PIN_29)
+#define GPIO_BOARD_OUTPUTS_RGB_DATA_IOMUX                         (IOMUX_PINCM4)
+/* Port definition for Pin Group GPIO_BOARD_IO */
+#define GPIO_BOARD_IO_PORT                                               (GPIOB)
+
+/* Defines for ICM20948_CS: GPIOB.12 with pinCMx 29 on package pin 36 */
+#define GPIO_BOARD_IO_ICM20948_CS_PIN                           (DL_GPIO_PIN_12)
+#define GPIO_BOARD_IO_ICM20948_CS_IOMUX                          (IOMUX_PINCM29)
+/* Defines for ICM20948_INT: GPIOB.21 with pinCMx 49 on package pin 68 */
+#define GPIO_BOARD_IO_ICM20948_INT_PIN                          (DL_GPIO_PIN_21)
+#define GPIO_BOARD_IO_ICM20948_INT_IOMUX                         (IOMUX_PINCM49)
+/* Defines for USER_KEY: GPIOB.31 with pinCMx 68 on package pin 27 */
+#define GPIO_BOARD_IO_USER_KEY_PIN                              (DL_GPIO_PIN_31)
+#define GPIO_BOARD_IO_USER_KEY_IOMUX                             (IOMUX_PINCM68)
+
 
 
 
@@ -83,6 +113,8 @@ void SYSCFG_DL_init(void);
 void SYSCFG_DL_initPower(void);
 void SYSCFG_DL_GPIO_init(void);
 void SYSCFG_DL_SYSCTL_init(void);
+
+void SYSCFG_DL_SYSTICK_init(void);
 
 
 #ifdef __cplusplus

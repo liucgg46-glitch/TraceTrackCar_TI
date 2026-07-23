@@ -1,114 +1,68 @@
 #include "bsp_gpio.h"
 
 typedef struct {
-    GPIO_TypeDef *port;
-    uint16_t pin;
-    GPIOMode_TypeDef mode;
-    GPIOOType_TypeDef otype;
-    GPIOPuPd_TypeDef pupd;
-    GPIOSpeed_TypeDef speed;
-    uint8_t init_level;
+    GPIO_Regs *port;
+    uint32_t pin;
+    uint8_t is_output;
+    uint8_t initial_level;
 } BSP_GPIO_Cfg_t;
 
 static const BSP_GPIO_Cfg_t s_gpio_cfg[BSP_GPIO_COUNT] = {
-#if BSP_GPIO_CH1_ENABLE
-    [BSP_GPIO_CH1] = {BSP_GPIO_CH1_PORT, BSP_GPIO_CH1_PIN, BSP_GPIO_CH1_MODE, BSP_GPIO_CH1_OTYPE, BSP_GPIO_CH1_PUPD, BSP_GPIO_CH1_SPEED, BSP_GPIO_CH1_INIT_LEVEL},
-#endif
-#if BSP_GPIO_CH2_ENABLE
-    [BSP_GPIO_CH2] = {BSP_GPIO_CH2_PORT, BSP_GPIO_CH2_PIN, BSP_GPIO_CH2_MODE, BSP_GPIO_CH2_OTYPE, BSP_GPIO_CH2_PUPD, BSP_GPIO_CH2_SPEED, BSP_GPIO_CH2_INIT_LEVEL},
-#endif
-#if BSP_GPIO_CH3_ENABLE
-    [BSP_GPIO_CH3] = {BSP_GPIO_CH3_PORT, BSP_GPIO_CH3_PIN, BSP_GPIO_CH3_MODE, BSP_GPIO_CH3_OTYPE, BSP_GPIO_CH3_PUPD, BSP_GPIO_CH3_SPEED, BSP_GPIO_CH3_INIT_LEVEL},
-#endif
-#if BSP_GPIO_CH4_ENABLE
-    [BSP_GPIO_CH4] = {BSP_GPIO_CH4_PORT, BSP_GPIO_CH4_PIN, BSP_GPIO_CH4_MODE, BSP_GPIO_CH4_OTYPE, BSP_GPIO_CH4_PUPD, BSP_GPIO_CH4_SPEED, BSP_GPIO_CH4_INIT_LEVEL},
-#endif
-#if BSP_GPIO_CH5_ENABLE
-    [BSP_GPIO_CH5] = {BSP_GPIO_CH5_PORT, BSP_GPIO_CH5_PIN, BSP_GPIO_CH5_MODE, BSP_GPIO_CH5_OTYPE, BSP_GPIO_CH5_PUPD, BSP_GPIO_CH5_SPEED, BSP_GPIO_CH5_INIT_LEVEL},
-#endif
-#if BSP_GPIO_CH6_ENABLE
-    [BSP_GPIO_CH6] = {BSP_GPIO_CH6_PORT, BSP_GPIO_CH6_PIN, BSP_GPIO_CH6_MODE, BSP_GPIO_CH6_OTYPE, BSP_GPIO_CH6_PUPD, BSP_GPIO_CH6_SPEED, BSP_GPIO_CH6_INIT_LEVEL},
-#endif
-#if BSP_GPIO_CH7_ENABLE
-    [BSP_GPIO_CH7] = {BSP_GPIO_CH7_PORT, BSP_GPIO_CH7_PIN, BSP_GPIO_CH7_MODE, BSP_GPIO_CH7_OTYPE, BSP_GPIO_CH7_PUPD, BSP_GPIO_CH7_SPEED, BSP_GPIO_CH7_INIT_LEVEL},
-#endif
-#if BSP_GPIO_CH8_ENABLE
-    [BSP_GPIO_CH8] = {BSP_GPIO_CH8_PORT, BSP_GPIO_CH8_PIN, BSP_GPIO_CH8_MODE, BSP_GPIO_CH8_OTYPE, BSP_GPIO_CH8_PUPD, BSP_GPIO_CH8_SPEED, BSP_GPIO_CH8_INIT_LEVEL},
-#endif
-#if BSP_GPIO_CH9_ENABLE
-    [BSP_GPIO_CH9] = {BSP_GPIO_CH9_PORT, BSP_GPIO_CH9_PIN, BSP_GPIO_CH9_MODE, BSP_GPIO_CH9_OTYPE, BSP_GPIO_CH9_PUPD, BSP_GPIO_CH9_SPEED, BSP_GPIO_CH9_INIT_LEVEL},
-#endif
-#if BSP_GPIO_CH10_ENABLE
-    [BSP_GPIO_CH10] = {BSP_GPIO_CH10_PORT, BSP_GPIO_CH10_PIN, BSP_GPIO_CH10_MODE, BSP_GPIO_CH10_OTYPE, BSP_GPIO_CH10_PUPD, BSP_GPIO_CH10_SPEED, BSP_GPIO_CH10_INIT_LEVEL},
-#endif
-#if BSP_GPIO_CH11_ENABLE
-    [BSP_GPIO_CH11] = {BSP_GPIO_CH11_PORT, BSP_GPIO_CH11_PIN, BSP_GPIO_CH11_MODE, BSP_GPIO_CH11_OTYPE, BSP_GPIO_CH11_PUPD, BSP_GPIO_CH11_SPEED, BSP_GPIO_CH11_INIT_LEVEL},
-#endif
-#if BSP_GPIO_CH12_ENABLE
-    [BSP_GPIO_CH12] = {BSP_GPIO_CH12_PORT, BSP_GPIO_CH12_PIN, BSP_GPIO_CH12_MODE, BSP_GPIO_CH12_OTYPE, BSP_GPIO_CH12_PUPD, BSP_GPIO_CH12_SPEED, BSP_GPIO_CH12_INIT_LEVEL},
-#endif
-#if BSP_GPIO_CH13_ENABLE
-    [BSP_GPIO_CH13] = {BSP_GPIO_CH13_PORT, BSP_GPIO_CH13_PIN, BSP_GPIO_CH13_MODE, BSP_GPIO_CH13_OTYPE, BSP_GPIO_CH13_PUPD, BSP_GPIO_CH13_SPEED, BSP_GPIO_CH13_INIT_LEVEL},
-#endif
-#if BSP_GPIO_CH14_ENABLE
-    [BSP_GPIO_CH14] = {BSP_GPIO_CH14_PORT, BSP_GPIO_CH14_PIN, BSP_GPIO_CH14_MODE, BSP_GPIO_CH14_OTYPE, BSP_GPIO_CH14_PUPD, BSP_GPIO_CH14_SPEED, BSP_GPIO_CH14_INIT_LEVEL},
-#endif
-#if BSP_GPIO_CH15_ENABLE
-    [BSP_GPIO_CH15] = {BSP_GPIO_CH15_PORT, BSP_GPIO_CH15_PIN, BSP_GPIO_CH15_MODE, BSP_GPIO_CH15_OTYPE, BSP_GPIO_CH15_PUPD, BSP_GPIO_CH15_SPEED, BSP_GPIO_CH15_INIT_LEVEL},
-#endif
-#if BSP_GPIO_CH16_ENABLE
-    [BSP_GPIO_CH16] = {BSP_GPIO_CH16_PORT, BSP_GPIO_CH16_PIN, BSP_GPIO_CH16_MODE, BSP_GPIO_CH16_OTYPE, BSP_GPIO_CH16_PUPD, BSP_GPIO_CH16_SPEED, BSP_GPIO_CH16_INIT_LEVEL},
-#endif
-#if BSP_GPIO_CH17_ENABLE
-    [BSP_GPIO_CH17] = {BSP_GPIO_CH17_PORT, BSP_GPIO_CH17_PIN, BSP_GPIO_CH17_MODE, BSP_GPIO_CH17_OTYPE, BSP_GPIO_CH17_PUPD, BSP_GPIO_CH17_SPEED, BSP_GPIO_CH17_INIT_LEVEL},
-#endif
-#if BSP_GPIO_CH18_ENABLE
-    [BSP_GPIO_CH18] = {BSP_GPIO_CH18_PORT, BSP_GPIO_CH18_PIN, BSP_GPIO_CH18_MODE, BSP_GPIO_CH18_OTYPE, BSP_GPIO_CH18_PUPD, BSP_GPIO_CH18_SPEED, BSP_GPIO_CH18_INIT_LEVEL},
-#endif
-#if BSP_GPIO_CH19_ENABLE
-    [BSP_GPIO_CH19] = {BSP_GPIO_CH19_PORT, BSP_GPIO_CH19_PIN, BSP_GPIO_CH19_MODE, BSP_GPIO_CH19_OTYPE, BSP_GPIO_CH19_PUPD, BSP_GPIO_CH19_SPEED, BSP_GPIO_CH19_INIT_LEVEL},
-#endif
-#if BSP_GPIO_CH20_ENABLE
-    [BSP_GPIO_CH20] = {BSP_GPIO_CH20_PORT, BSP_GPIO_CH20_PIN, BSP_GPIO_CH20_MODE, BSP_GPIO_CH20_OTYPE, BSP_GPIO_CH20_PUPD, BSP_GPIO_CH20_SPEED, BSP_GPIO_CH20_INIT_LEVEL},
-#endif
-#if BSP_GPIO_CH21_ENABLE
-    [BSP_GPIO_CH21] = {BSP_GPIO_CH21_PORT, BSP_GPIO_CH21_PIN, BSP_GPIO_CH21_MODE, BSP_GPIO_CH21_OTYPE, BSP_GPIO_CH21_PUPD, BSP_GPIO_CH21_SPEED, BSP_GPIO_CH21_INIT_LEVEL},
-#endif
-#if BSP_GPIO_CH22_ENABLE
-    [BSP_GPIO_CH22] = {BSP_GPIO_CH22_PORT, BSP_GPIO_CH22_PIN, BSP_GPIO_CH22_MODE, BSP_GPIO_CH22_OTYPE, BSP_GPIO_CH22_PUPD, BSP_GPIO_CH22_SPEED, BSP_GPIO_CH22_INIT_LEVEL},
-#endif
-#if BSP_GPIO_CH23_ENABLE
-    [BSP_GPIO_CH23] = {BSP_GPIO_CH23_PORT, BSP_GPIO_CH23_PIN, BSP_GPIO_CH23_MODE, BSP_GPIO_CH23_OTYPE, BSP_GPIO_CH23_PUPD, BSP_GPIO_CH23_SPEED, BSP_GPIO_CH23_INIT_LEVEL},
-#endif
+    [BSP_GPIO_LED1] = {
+        GPIO_BOARD_OUTPUTS_PORT,
+        GPIO_BOARD_OUTPUTS_LED1_PIN,
+        1U,
+        1U
+    },
+    [BSP_GPIO_LED2] = {
+        GPIO_BOARD_OUTPUTS_PORT,
+        GPIO_BOARD_OUTPUTS_LED2_PIN,
+        1U,
+        1U
+    },
+    [BSP_GPIO_RGB_DATA] = {
+        GPIO_BOARD_OUTPUTS_PORT,
+        GPIO_BOARD_OUTPUTS_RGB_DATA_PIN,
+        1U,
+        0U
+    },
+    [BSP_GPIO_ICM20948_CS] = {
+        GPIO_BOARD_IO_PORT,
+        GPIO_BOARD_IO_ICM20948_CS_PIN,
+        1U,
+        1U
+    },
+    [BSP_GPIO_ICM20948_INT] = {
+        GPIO_BOARD_IO_PORT,
+        GPIO_BOARD_IO_ICM20948_INT_PIN,
+        0U,
+        0U
+    },
+    [BSP_GPIO_USER_KEY] = {
+        GPIO_BOARD_IO_PORT,
+        GPIO_BOARD_IO_USER_KEY_PIN,
+        0U,
+        0U
+    }
 };
 
 void BSP_GPIO_Init(BSP_GPIO_Id_t id)
 {
-    GPIO_InitTypeDef gpio;
-    const BSP_GPIO_Cfg_t *cfg;
+    if (id >= BSP_GPIO_COUNT) {
+        return;
+    }
 
-    if (id >= BSP_GPIO_COUNT) return;
-    cfg = &s_gpio_cfg[id];
-
-    BSP_GPIO_ClockEnable(cfg->port);
-
-    GPIO_StructInit(&gpio);
-    gpio.GPIO_Pin   = cfg->pin;
-    gpio.GPIO_Mode  = cfg->mode;
-    gpio.GPIO_OType = cfg->otype;
-    gpio.GPIO_PuPd  = cfg->pupd;
-    gpio.GPIO_Speed = cfg->speed;
-    GPIO_Init(cfg->port, &gpio);
-
-    if (cfg->mode == GPIO_Mode_OUT) {
-        BSP_GPIO_Write(id, cfg->init_level);
+    if (s_gpio_cfg[id].is_output != 0U) {
+        BSP_GPIO_Write(id, s_gpio_cfg[id].initial_level);
     }
 }
 
 void BSP_GPIO_InitAll(void)
 {
     BSP_GPIO_Id_t id;
-    for (id = (BSP_GPIO_Id_t)0; id < BSP_GPIO_COUNT; id = (BSP_GPIO_Id_t)(id + 1)) {
+
+    for (id = (BSP_GPIO_Id_t)0; id < BSP_GPIO_COUNT;
+         id = (BSP_GPIO_Id_t)(id + 1)) {
         BSP_GPIO_Init(id);
     }
 }
@@ -116,41 +70,48 @@ void BSP_GPIO_InitAll(void)
 void BSP_GPIO_Write(BSP_GPIO_Id_t id, uint8_t level)
 {
     const BSP_GPIO_Cfg_t *cfg;
-    if (id >= BSP_GPIO_COUNT) return;
-    cfg = &s_gpio_cfg[id];
 
-    if (level) {
-        GPIO_SetBits(cfg->port, cfg->pin);
+    if (id >= BSP_GPIO_COUNT) {
+        return;
+    }
+
+    cfg = &s_gpio_cfg[id];
+    if (cfg->is_output == 0U) {
+        return;
+    }
+
+    if (level != 0U) {
+        DL_GPIO_setPins(cfg->port, cfg->pin);
     } else {
-        GPIO_ResetBits(cfg->port, cfg->pin);
+        DL_GPIO_clearPins(cfg->port, cfg->pin);
     }
 }
 
 void BSP_GPIO_Toggle(BSP_GPIO_Id_t id)
 {
-    if (BSP_GPIO_Read(id)) {
-        BSP_GPIO_Write(id, 0U);
-    } else {
-        BSP_GPIO_Write(id, 1U);
+    if ((id >= BSP_GPIO_COUNT) || (s_gpio_cfg[id].is_output == 0U)) {
+        return;
     }
+
+    DL_GPIO_togglePins(s_gpio_cfg[id].port, s_gpio_cfg[id].pin);
 }
 
 uint8_t BSP_GPIO_Read(BSP_GPIO_Id_t id)
 {
-    const BSP_GPIO_Cfg_t *cfg;
-    if (id >= BSP_GPIO_COUNT) return 0U;
-    cfg = &s_gpio_cfg[id];
-    return (GPIO_ReadInputDataBit(cfg->port, cfg->pin) != Bit_RESET) ? 1U : 0U;
+    if (id >= BSP_GPIO_COUNT) {
+        return 0U;
+    }
+
+    return ((DL_GPIO_readPins(s_gpio_cfg[id].port, s_gpio_cfg[id].pin) &
+             s_gpio_cfg[id].pin) != 0U) ? 1U : 0U;
 }
 
-GPIO_TypeDef *BSP_GPIO_GetPort(BSP_GPIO_Id_t id)
+GPIO_Regs *BSP_GPIO_GetPort(BSP_GPIO_Id_t id)
 {
-    if (id >= BSP_GPIO_COUNT) return 0;
-    return s_gpio_cfg[id].port;
+    return (id < BSP_GPIO_COUNT) ? s_gpio_cfg[id].port : (GPIO_Regs *)0;
 }
 
-uint16_t BSP_GPIO_GetPin(BSP_GPIO_Id_t id)
+uint32_t BSP_GPIO_GetPin(BSP_GPIO_Id_t id)
 {
-    if (id >= BSP_GPIO_COUNT) return 0U;
-    return s_gpio_cfg[id].pin;
+    return (id < BSP_GPIO_COUNT) ? s_gpio_cfg[id].pin : 0U;
 }
