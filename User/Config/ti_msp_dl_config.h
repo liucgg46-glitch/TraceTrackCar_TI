@@ -323,6 +323,9 @@ extern "C" {
 /* Defines for BUZZER: GPIOA.15 with pinCMx 37 on package pin 44 */
 #define GPIO_BOARD_OUTPUTS_BUZZER_PIN                           (DL_GPIO_PIN_15)
 #define GPIO_BOARD_OUTPUTS_BUZZER_IOMUX                          (IOMUX_PINCM37)
+/* Defines for KEY4: GPIOA.8 with pinCMx 19 on package pin 22 */
+#define GPIO_BOARD_OUTPUTS_KEY4_PIN                              (DL_GPIO_PIN_8)
+#define GPIO_BOARD_OUTPUTS_KEY4_IOMUX                            (IOMUX_PINCM19)
 /* Port definition for Pin Group GPIO_BOARD_IO */
 #define GPIO_BOARD_IO_PORT                                               (GPIOB)
 
@@ -385,6 +388,15 @@ extern "C" {
 /* Defines for E220_AUX: GPIOB.28 with pinCMx 65 on package pin 24 */
 #define GPIO_BOARD_IO_E220_AUX_PIN                              (DL_GPIO_PIN_28)
 #define GPIO_BOARD_IO_E220_AUX_IOMUX                             (IOMUX_PINCM65)
+/* Defines for KEY1: GPIOB.0 with pinCMx 12 on package pin 15 */
+#define GPIO_BOARD_IO_KEY1_PIN                                   (DL_GPIO_PIN_0)
+#define GPIO_BOARD_IO_KEY1_IOMUX                                 (IOMUX_PINCM12)
+/* Defines for KEY2: GPIOB.1 with pinCMx 13 on package pin 16 */
+#define GPIO_BOARD_IO_KEY2_PIN                                   (DL_GPIO_PIN_1)
+#define GPIO_BOARD_IO_KEY2_IOMUX                                 (IOMUX_PINCM13)
+/* Defines for KEY3: GPIOB.13 with pinCMx 30 on package pin 37 */
+#define GPIO_BOARD_IO_KEY3_PIN                                  (DL_GPIO_PIN_13)
+#define GPIO_BOARD_IO_KEY3_IOMUX                                 (IOMUX_PINCM30)
 /* Port definition for Pin Group GPIO_DISPLAY_GRAY */
 #define GPIO_DISPLAY_GRAY_PORT                                           (GPIOC)
 

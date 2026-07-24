@@ -44,7 +44,7 @@ Board.peripheral.swdioPin.$assign = "PA19";
 
 GPIOA_BOARD.$name = "GPIO_BOARD_OUTPUTS";
 GPIOA_BOARD.port  = "PORTA";
-GPIOA_BOARD.associatedPins.create(8);
+GPIOA_BOARD.associatedPins.create(9);
 
 GPIOA_BOARD.associatedPins[0].$name        = "LED1";
 GPIOA_BOARD.associatedPins[0].assignedPin  = "14";
@@ -85,10 +85,15 @@ GPIOA_BOARD.associatedPins[7].$name        = "BUZZER";
 GPIOA_BOARD.associatedPins[7].assignedPin  = "15";
 GPIOA_BOARD.associatedPins[7].initialValue = "SET";
 GPIOA_BOARD.associatedPins[7].pin.$assign  = "PA15";
+GPIOA_BOARD.associatedPins[8].$name            = "KEY4";
+GPIOA_BOARD.associatedPins[8].assignedPin      = "8";
+GPIOA_BOARD.associatedPins[8].direction        = "INPUT";
+GPIOA_BOARD.associatedPins[8].internalResistor = "PULL_UP";
+GPIOA_BOARD.associatedPins[8].pin.$assign      = "PA8";
 
 GPIOB_BOARD.$name = "GPIO_BOARD_IO";
 GPIOB_BOARD.port  = "PORTB";
-GPIOB_BOARD.associatedPins.create(17);
+GPIOB_BOARD.associatedPins.create(20);
 
 GPIOB_BOARD.associatedPins[0].$name        = "ICM20948_CS";
 GPIOB_BOARD.associatedPins[0].assignedPin  = "12";
@@ -194,6 +199,23 @@ GPIOB_BOARD.associatedPins[16].assignedPin      = "28";
 GPIOB_BOARD.associatedPins[16].direction        = "INPUT";
 GPIOB_BOARD.associatedPins[16].internalResistor = "PULL_UP";
 GPIOB_BOARD.associatedPins[16].pin.$assign      = "PB28";
+GPIOB_BOARD.associatedPins[17].$name            = "KEY1";
+GPIOB_BOARD.associatedPins[17].assignedPin      = "0";
+GPIOB_BOARD.associatedPins[17].direction        = "INPUT";
+GPIOB_BOARD.associatedPins[17].internalResistor = "PULL_UP";
+GPIOB_BOARD.associatedPins[17].pin.$assign      = "PB0";
+
+GPIOB_BOARD.associatedPins[18].$name            = "KEY2";
+GPIOB_BOARD.associatedPins[18].assignedPin      = "1";
+GPIOB_BOARD.associatedPins[18].direction        = "INPUT";
+GPIOB_BOARD.associatedPins[18].internalResistor = "PULL_UP";
+GPIOB_BOARD.associatedPins[18].pin.$assign      = "PB1";
+
+GPIOB_BOARD.associatedPins[19].$name            = "KEY3";
+GPIOB_BOARD.associatedPins[19].assignedPin      = "13";
+GPIOB_BOARD.associatedPins[19].direction        = "INPUT";
+GPIOB_BOARD.associatedPins[19].internalResistor = "PULL_UP";
+GPIOB_BOARD.associatedPins[19].pin.$assign      = "PB13";
 
 GPIOC_BOARD.$name = "GPIO_DISPLAY_GRAY";
 GPIOC_BOARD.port  = "PORTC";

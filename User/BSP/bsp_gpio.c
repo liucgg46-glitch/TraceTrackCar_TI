@@ -62,7 +62,15 @@ static const BSP_GPIO_Cfg_t s_gpio_cfg[BSP_GPIO_COUNT] = {
     [BSP_GPIO_HX711_PD_SCK] = GPIO_CFG_OUT(GPIO_BOARD_OUTPUTS_PORT,
                                           GPIO_BOARD_OUTPUTS_HX711_SCK_PIN, 0U),
     [BSP_GPIO_BUZZER] = GPIO_CFG_OUT(GPIO_BOARD_OUTPUTS_PORT,
-                                    GPIO_BOARD_OUTPUTS_BUZZER_PIN, 1U)
+                                    GPIO_BOARD_OUTPUTS_BUZZER_PIN, 1U),
+    [BSP_GPIO_KEY1] = GPIO_CFG_IN(GPIO_BOARD_IO_PORT,
+                                  GPIO_BOARD_IO_KEY1_PIN),
+    [BSP_GPIO_KEY2] = GPIO_CFG_IN(GPIO_BOARD_IO_PORT,
+                                  GPIO_BOARD_IO_KEY2_PIN),
+    [BSP_GPIO_KEY3] = GPIO_CFG_IN(GPIO_BOARD_IO_PORT,
+                                  GPIO_BOARD_IO_KEY3_PIN),
+    [BSP_GPIO_KEY4] = GPIO_CFG_IN(GPIO_BOARD_OUTPUTS_PORT,
+                                  GPIO_BOARD_OUTPUTS_KEY4_PIN)
 };
 
 void BSP_GPIO_Init(BSP_GPIO_Id_t id)

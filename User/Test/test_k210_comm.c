@@ -304,8 +304,8 @@ void Test_K210_RoadProfileUpdate(void)
     int length;
 
     /*
-     * KEY1：CURRENT，P=0
-     * KEY2：OLD，P=1
+     * KEY1（PB0/A08）：CURRENT，P=0
+     * KEY2（PB1/A09）：OLD，P=1
      *
      * KEY3、KEY4目前预留，暂不发送P=2/P=3，
      * 因为K210端还没有配置BRIGHT和DARK参数。
