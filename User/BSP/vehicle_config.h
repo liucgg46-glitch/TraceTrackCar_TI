@@ -17,10 +17,10 @@
 #endif
 
 /*
- * USART1 外部链路选择。
+ * UART4 / 逻辑 UART_PORT1 外部链路选择。
  *
- * 普通直连：PA9/PA10 直接连接 USB-TTL 转换器或其他 UART 设备。
- * E220：PA9/PA10 连接 E220 的 RXD/TXD，PE6 读取 E220 AUX。
+ * 普通直连：PB10/PB11 直接连接外部 UART 设备。
+ * E220：PB10/PB11 连接 E220 的 RXD/TXD，PB28 读取 E220 AUX。
  *
  * E220 模块已配置为 115200、8N1。使用透明传输模式时，M0 和 M1
  * 必须由硬件可靠拉低；本固件不控制这两个引脚。
@@ -29,7 +29,7 @@
 #define VEHICLE_UART1_LINK_E220             1U
 
 #ifndef VEHICLE_UART1_LINK_MODE
-#define VEHICLE_UART1_LINK_MODE             VEHICLE_UART1_LINK_DIRECT
+#define VEHICLE_UART1_LINK_MODE             VEHICLE_UART1_LINK_E220
 #endif
 
 #if (VEHICLE_UART1_LINK_MODE == VEHICLE_UART1_LINK_DIRECT)

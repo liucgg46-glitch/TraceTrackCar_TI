@@ -21,7 +21,7 @@
  *   STM32 PA9 USART1_TX -> USB-TTL RX
  *
  * 本文件不依赖printf串口重定向。
- * 所有日志都直接通过BSP_UART_WriteFrame(UART_PORT1, ...)输出。
+ * 所有日志都直接通过BSP_UART_WriteFrame(DEBUG_UART_PORT, ...)输出。
  * ============================================================================
  */
 
@@ -97,7 +97,7 @@ static void Test_K210_SendText(const char *text)
     }
 
     (void)BSP_UART_WriteFrame(
-        UART_PORT1,
+        DEBUG_UART_PORT,
         (const uint8_t *)text,
         length
     );

@@ -57,7 +57,7 @@ static void Test_K210_SendText(const char *text)
     }
 
     (void)BSP_UART_WriteFrame(
-        UART_PORT1,
+        DEBUG_UART_PORT,
         (const uint8_t *)text,
         length
     );

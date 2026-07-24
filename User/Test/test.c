@@ -125,7 +125,7 @@ void Test_K210_CommUpdate(void)
             buf[used] = '\0';
 
             (void)BSP_UART_WriteFrame(
-                UART_PORT1,
+                DEBUG_UART_PORT,
                 (const uint8_t *)buf,
                 (uint16_t)used
             );
@@ -167,7 +167,7 @@ void Test_K210_CommUpdate(void)
     if ((n > 0) &&
         (n < (int)sizeof(buf))) {
         (void)BSP_UART_WriteFrame(
-            UART_PORT1,
+            DEBUG_UART_PORT,
             (const uint8_t *)buf,
             (uint16_t)n
         );
@@ -307,7 +307,7 @@ void Test_Encoder_Log(void)
                 (long)BSP_Encoder_GetSpeedCps(BSP_ENCODER_CH2),
                 (long)BSP_Encoder_GetTotal(BSP_ENCODER_CH2));
 
-    BSP_UART_WriteFrame(UART_PORT1, (const uint8_t *)buf, (uint16_t)n);
+    BSP_UART_WriteFrame(DEBUG_UART_PORT, (const uint8_t *)buf, (uint16_t)n);
 }
 
 /*
@@ -366,13 +366,13 @@ void Test_Gray4051_Log(void)
                 s_gray_raw[4], s_gray_raw[5], s_gray_raw[6], s_gray_raw[7]);
 
     if (n > 0 && n < (int)sizeof(buf)) {
-        (void)BSP_UART_WriteFrame(UART_PORT1, (const uint8_t *)buf, (uint16_t)n);
+        (void)BSP_UART_WriteFrame(DEBUG_UART_PORT, (const uint8_t *)buf, (uint16_t)n);
     }
 }
 
 static void Test_Key_Send(const char *message, uint16_t length)
 {
-    (void)BSP_UART_WriteFrame(UART_PORT1, (const uint8_t *)message, length);
+    (void)BSP_UART_WriteFrame(DEBUG_UART_PORT, (const uint8_t *)message, length);
 }
 
 /*
@@ -463,7 +463,7 @@ void Test_EXTI_Log(void)
 {
     char buf[64];
     int n = sprintf(buf, "EXTI count=%lu\r\n", (unsigned long)g_exti_count);
-    BSP_UART_WriteFrame(UART_PORT1, (const uint8_t *)buf, (uint16_t)n);
+    BSP_UART_WriteFrame(DEBUG_UART_PORT, (const uint8_t *)buf, (uint16_t)n);
 }
 
 //涓插彛娴嬭瘯
@@ -471,8 +471,8 @@ void Test_UART_Echo(void)
 {
     uint8_t ch;
 
-    while (BSP_UART_GetChar(UART_PORT1, &ch)) {
-        BSP_UART_WriteFrame(UART_PORT1, &ch, 1U);
+    while (BSP_UART_GetChar(DEBUG_UART_PORT, &ch)) {
+        BSP_UART_WriteFrame(DEBUG_UART_PORT, &ch, 1U);
     }
 }
 
@@ -482,13 +482,13 @@ void Test_UART_Stats(void)
     char buf[96];
     int n;
 
-    if (BSP_UART_GetStats(UART_PORT1, &st) != BSP_OK) {
+    if (BSP_UART_GetStats(DEBUG_UART_PORT, &st) != BSP_OK) {
         return;
     }
 
     n = sprintf(buf, "UART rx=%u tx=%u ov=%u drop=%u\r\n",
                 st.rx_count, st.tx_count, st.rx_overflow, st.tx_drop);
-    BSP_UART_WriteFrame(UART_PORT1, (const uint8_t *)buf, (uint16_t)n);
+    BSP_UART_WriteFrame(DEBUG_UART_PORT, (const uint8_t *)buf, (uint16_t)n);
 }
 
 #if VEHICLE_UART1_E220_ENABLE
@@ -770,7 +770,7 @@ void Test_E220_Link_Update(void)
         initialized = 1U;
     }
 
-    while (BSP_UART_GetChar(UART_PORT1, &ch) != 0U) {
+    while (BSP_UART_GetChar(UART_PORT_E220, &ch) != 0U) {
         if (ch == (uint8_t)'\n') {
             if ((discard_until_newline == 0U) &&
                 (Test_E220_ParseFrame(rx_frame, rx_length,
@@ -808,7 +808,7 @@ void Test_E220_Link_Update(void)
                           (unsigned int)s_test_e220_state.self_id,
                           (unsigned long)next_value);
         if ((length > 0) && (length < (int)sizeof(tx_frame)) &&
-            (BSP_UART_WriteFrame(UART_PORT1,
+            (BSP_UART_WriteFrame(UART_PORT_E220,
                                  (const uint8_t *)tx_frame,
                                  (uint16_t)length) == BSP_OK)) {
             s_test_e220_state.tx_value = next_value;
@@ -835,7 +835,7 @@ void Test_I2C_Scan(void)
     int n;
 
     if (BSP_I2C_ScanBus(I2C_BUS1, addr, 16, &found) != BSP_OK) {
-        BSP_UART_WriteFrame(UART_PORT1, (const uint8_t *)"I2C scan error\r\n", 16);
+        BSP_UART_WriteFrame(DEBUG_UART_PORT, (const uint8_t *)"I2C scan error\r\n", 16);
         return;
     }
 
@@ -845,7 +845,7 @@ void Test_I2C_Scan(void)
     }
     n += sprintf(&buf[n], "\r\n");
 
-    BSP_UART_WriteFrame(UART_PORT1, (const uint8_t *)buf, (uint16_t)n);
+    BSP_UART_WriteFrame(DEBUG_UART_PORT, (const uint8_t *)buf, (uint16_t)n);
 }
 
 void Test_DriveProfile_Update(void)
@@ -871,7 +871,7 @@ void Test_DriveProfile_Update(void)
                       (unsigned int)Drv_Encoder_IsWheelEnabled(WHEEL_RR),
                       (unsigned int)VEHICLE_SPI1_PINS_AVAILABLE);
     if ((length > 0) && (length < (int)sizeof(line))) {
-        (void)BSP_UART_WriteFrame(UART_PORT1, (const uint8_t *)line, (uint16_t)length);
+        (void)BSP_UART_WriteFrame(DEBUG_UART_PORT, (const uint8_t *)line, (uint16_t)length);
     }
 }
 
@@ -890,7 +890,7 @@ void Test_MotorCmd_Update(void)
 {
     uint8_t ch;
 
-    while (BSP_UART_GetChar(UART_PORT1, &ch)) {
+    while (BSP_UART_GetChar(DEBUG_UART_PORT, &ch)) {
         if (ch == 'w') {
             Motor_SetPWM(300, 300);
         } else if (ch == 's') {
@@ -918,7 +918,7 @@ void Test_MotorCmd_Log(void)
                 pwm[MOTOR_FL], pwm[MOTOR_FR], pwm[MOTOR_RL], pwm[MOTOR_RR]);
 
     if (n > 0 && n < (int)sizeof(buf)) {
-        (void)BSP_UART_WriteFrame(UART_PORT1, (const uint8_t *)buf, (uint16_t)n);
+        (void)BSP_UART_WriteFrame(DEBUG_UART_PORT, (const uint8_t *)buf, (uint16_t)n);
     }
 }
 
@@ -937,7 +937,7 @@ void Test_DrvEncoder_Log(void)
                 (long)Drv_Encoder_GetRightSpeedCps());
 
     if (n > 0 && n < (int)sizeof(buf)) {
-        BSP_UART_WriteFrame(UART_PORT1, (const uint8_t *)buf, (uint16_t)n);
+        BSP_UART_WriteFrame(DEBUG_UART_PORT, (const uint8_t *)buf, (uint16_t)n);
     }
 }
 
@@ -1208,7 +1208,7 @@ void Test_ChassisCmd_Log(void)
                 info.rr_output);
 
     if (n > 0 && n < (int)sizeof(buf)) {
-        (void)BSP_UART_WriteFrame(UART_PORT1, (const uint8_t *)buf, (uint16_t)n);
+        (void)BSP_UART_WriteFrame(DEBUG_UART_PORT, (const uint8_t *)buf, (uint16_t)n);
     }
 }
 
@@ -1226,7 +1226,7 @@ static void Test_CountPerRev_Print(void)
                 (long)Drv_Encoder_GetWheelTotalCount(WHEEL_RR));
 
     if (n > 0 && n < (int)sizeof(buf)) {
-        BSP_UART_WriteFrame(UART_PORT1, (const uint8_t *)buf, (uint16_t)n);
+        BSP_UART_WriteFrame(DEBUG_UART_PORT, (const uint8_t *)buf, (uint16_t)n);
     }
 }
 
@@ -1234,10 +1234,10 @@ void Test_CountPerRev_Update(void)
 {
     uint8_t ch;
 
-    while (BSP_UART_GetChar(UART_PORT1, &ch)) {
+    while (BSP_UART_GetChar(DEBUG_UART_PORT, &ch)) {
         if (ch == 'c' || ch == 'C') {
             Drv_Encoder_ClearAllTotal();
-            BSP_UART_WriteFrame(UART_PORT1,
+            BSP_UART_WriteFrame(DEBUG_UART_PORT,
                                 (const uint8_t *)"encoder total cleared\r\n",
                                 23);
         } else if (ch == 'p' || ch == 'P') {
@@ -1357,7 +1357,7 @@ void Test_MotionCmd_Log(void)
                 chassis.rr_output);
 
     if (n > 0 && n < (int)sizeof(buf)) {
-        (void)BSP_UART_WriteFrame(UART_PORT1, (const uint8_t *)buf, (uint16_t)n);
+        (void)BSP_UART_WriteFrame(DEBUG_UART_PORT, (const uint8_t *)buf, (uint16_t)n);
     }
 }
 
@@ -1416,7 +1416,7 @@ static void Test_Line_PrintThreshold(void)
                 (unsigned int)threshold[7]);
 
     if ((n > 0) && (n < (int)sizeof(buf))) {
-        (void)BSP_UART_WriteFrame(UART_PORT1,
+        (void)BSP_UART_WriteFrame(DEBUG_UART_PORT,
                                   (const uint8_t *)buf,
                                   (uint16_t)n);
     }
@@ -1456,7 +1456,7 @@ static void Test_Line_Print(void)
                 (unsigned int)mcu.active_addr);
 
     if (n > 0 && n < (int)sizeof(buf)) {
-        (void)BSP_UART_WriteFrame(UART_PORT1, (const uint8_t *)buf, (uint16_t)n);
+        (void)BSP_UART_WriteFrame(DEBUG_UART_PORT, (const uint8_t *)buf, (uint16_t)n);
     }
 
     n = sprintf(buf,
@@ -1481,7 +1481,7 @@ static void Test_Line_Print(void)
                 (unsigned long)i2c.error_count);
 
     if (n > 0 && n < (int)sizeof(buf)) {
-        (void)BSP_UART_WriteFrame(UART_PORT1, (const uint8_t *)buf, (uint16_t)n);
+        (void)BSP_UART_WriteFrame(DEBUG_UART_PORT, (const uint8_t *)buf, (uint16_t)n);
     }
 
     n = sprintf(buf,
@@ -1496,7 +1496,7 @@ static void Test_Line_Print(void)
                 (unsigned int)sensor.filt[6], (unsigned int)sensor.filt[7]);
 
     if (n > 0 && n < (int)sizeof(buf)) {
-        (void)BSP_UART_WriteFrame(UART_PORT1, (const uint8_t *)buf, (uint16_t)n);
+        (void)BSP_UART_WriteFrame(DEBUG_UART_PORT, (const uint8_t *)buf, (uint16_t)n);
     }
 
     Test_Line_PrintThreshold();
@@ -1512,7 +1512,7 @@ static void Test_Line_Print(void)
                 (int)info.output.turn_cps);
 
     if (n > 0 && n < (int)sizeof(buf)) {
-        (void)BSP_UART_WriteFrame(UART_PORT1, (const uint8_t *)buf, (uint16_t)n);
+        (void)BSP_UART_WriteFrame(DEBUG_UART_PORT, (const uint8_t *)buf, (uint16_t)n);
     }
 }
 
@@ -1522,40 +1522,40 @@ void Test_LineCmd_Update(void)
     uint16_t raw[LINE_DETECT_SENSOR_NUM];
     BSP_Status_t status;
 
-    while (BSP_UART_GetChar(UART_PORT1, &ch)) {
+    while (BSP_UART_GetChar(DEBUG_UART_PORT, &ch)) {
         if ((ch == '1') || (ch == 'l') || (ch == 'L')) {
             status = LineFollow_Start();
             if (status == BSP_OK) {
-                (void)BSP_UART_WriteFrame(UART_PORT1,
+                (void)BSP_UART_WriteFrame(DEBUG_UART_PORT,
                                           (const uint8_t *)"line follow RUN\r\n",
                                           (uint16_t)(sizeof("line follow RUN\r\n") - 1U));
             } else if (status == BSP_ERROR) {
-                (void)BSP_UART_WriteFrame(UART_PORT1,
+                (void)BSP_UART_WriteFrame(DEBUG_UART_PORT,
                                           (const uint8_t *)"line follow rejected: gray sensor offline\r\n",
                                           (uint16_t)(sizeof("line follow rejected: gray sensor offline\r\n") - 1U));
             } else {
-                (void)BSP_UART_WriteFrame(UART_PORT1,
+                (void)BSP_UART_WriteFrame(DEBUG_UART_PORT,
                                           (const uint8_t *)"line follow rejected: control busy\r\n",
                                           (uint16_t)(sizeof("line follow rejected: control busy\r\n") - 1U));
             }
         } else if (ch == '0' || ch == 'x') {
             LineFollow_Stop();
-            (void)BSP_UART_WriteFrame(UART_PORT1, (const uint8_t *)"line follow stop\r\n", (uint16_t)(sizeof("line follow stop\r\n") - 1U));
+            (void)BSP_UART_WriteFrame(DEBUG_UART_PORT, (const uint8_t *)"line follow stop\r\n", (uint16_t)(sizeof("line follow stop\r\n") - 1U));
         } else if (ch == 'w') {
             (void)Drv_GraySensor_GetFiltArray(raw, LINE_DETECT_SENSOR_NUM);
             LineDetect_CaptureWhite(raw);
-            (void)BSP_UART_WriteFrame(UART_PORT1, (const uint8_t *)"capture white ok\r\n", (uint16_t)(sizeof("capture white ok\r\n") - 1U));
+            (void)BSP_UART_WriteFrame(DEBUG_UART_PORT, (const uint8_t *)"capture white ok\r\n", (uint16_t)(sizeof("capture white ok\r\n") - 1U));
         } else if (ch == 'b') {
             (void)Drv_GraySensor_GetFiltArray(raw, LINE_DETECT_SENSOR_NUM);
             LineDetect_CaptureBlack(raw);
-            (void)BSP_UART_WriteFrame(UART_PORT1, (const uint8_t *)"capture black ok\r\n", (uint16_t)(sizeof("capture black ok\r\n") - 1U));
+            (void)BSP_UART_WriteFrame(DEBUG_UART_PORT, (const uint8_t *)"capture black ok\r\n", (uint16_t)(sizeof("capture black ok\r\n") - 1U));
         } else if (ch == 't') {
             LineDetect_MakeThresholdFromWhiteBlack();
-            (void)BSP_UART_WriteFrame(UART_PORT1, (const uint8_t *)"make threshold ok\r\n", (uint16_t)(sizeof("make threshold ok\r\n") - 1U));
+            (void)BSP_UART_WriteFrame(DEBUG_UART_PORT, (const uint8_t *)"make threshold ok\r\n", (uint16_t)(sizeof("make threshold ok\r\n") - 1U));
             Test_Line_PrintThreshold();
         } else if (ch == 'd') {
             LineDetect_SetAllThreshold(LINE_DETECT_DEFAULT_THRESHOLD);
-            (void)BSP_UART_WriteFrame(UART_PORT1, (const uint8_t *)"default threshold\r\n", (uint16_t)(sizeof("default threshold\r\n") - 1U));
+            (void)BSP_UART_WriteFrame(DEBUG_UART_PORT, (const uint8_t *)"default threshold\r\n", (uint16_t)(sizeof("default threshold\r\n") - 1U));
             Test_Line_PrintThreshold();
         } else if (ch == 'p') {
             Test_Line_Print();
@@ -1608,7 +1608,7 @@ void Test_RouteCmd_Update(void)
 #endif
 
     /* USART1 只保留路线复位命令，路线状态改由 LCD 显示。 */
-    while (BSP_UART_GetChar(UART_PORT1, &ch)) {
+    while (BSP_UART_GetChar(DEBUG_UART_PORT, &ch)) {
         if ((ch == 'r') || (ch == 'R')) {
             RouteManager_Reset(BSP_GetTickMs());
         }
@@ -1686,7 +1686,7 @@ void Test_VL53L1X_Update(void)
                  (unsigned long)info.reinit_count);
 
     if ((n > 0) && (n < (int)sizeof(buf))) {
-        (void)BSP_UART_WriteFrame(UART_PORT1,
+        (void)BSP_UART_WriteFrame(DEBUG_UART_PORT,
                                   (const uint8_t *)buf,
                                   (uint16_t)n);
     }
@@ -1774,7 +1774,7 @@ static void Test_HX711_Print(void)
     display_text = (pressure_text[0] == '+') ? &pressure_text[1] : pressure_text;
     length = snprintf(line, sizeof(line), "WEIGHT=%s g\r\n", display_text);
     if ((length > 0) && (length < (int)sizeof(line))) {
-        (void)BSP_UART_WriteFrame(UART_PORT1, (const uint8_t *)line, (uint16_t)length);
+        (void)BSP_UART_WriteFrame(DEBUG_UART_PORT, (const uint8_t *)line, (uint16_t)length);
     }
 }
 
@@ -1859,7 +1859,7 @@ void Test_TaskFSM_Log(void)
 
     if ((length > 0) && (length < (int)sizeof(line))) {
         (void)BSP_UART_WriteFrame(
-            UART_PORT1,
+            DEBUG_UART_PORT,
             (const uint8_t *)line,
             (uint16_t)length
         );
@@ -1879,7 +1879,7 @@ static void Test_ICM20948_Print(const char *text)
     }
 
     if (length != 0U) {
-        (void)BSP_UART_WriteFrame(UART_PORT1,
+        (void)BSP_UART_WriteFrame(DEBUG_UART_PORT,
                                   (const uint8_t *)text,
                                   length);
     }
@@ -2159,20 +2159,20 @@ void Test_Attitude_Update(void)
      * 该测试函数独占本轮姿态测试所需的串口命令，不修改或依赖其他测试函数：
      *   M：开始磁力计标定；N：完成标定；Y：把当前融合航向设为相对零点。
      */
-    while (BSP_UART_GetChar(UART_PORT1, &ch)) {
+    while (BSP_UART_GetChar(DEBUG_UART_PORT, &ch)) {
         if (ch == 'G') {
             Chassis_EmergencyStop();
             Drv_ICM20948_StartGyroCalibration();
             Attitude_Reset();
             Heading_Reset();
             (void)BSP_UART_WriteFrame(
-                UART_PORT1,
+                DEBUG_UART_PORT,
                 (const uint8_t *)"gyro calibration RESTARTED: keep the vehicle completely still\r\n",
                 (uint16_t)(sizeof("gyro calibration RESTARTED: keep the vehicle completely still\r\n") - 1U));
         } else if (ch == 'M') {
             Attitude_MagCalibrationStart();
             (void)BSP_UART_WriteFrame(
-                UART_PORT1,
+                DEBUG_UART_PORT,
                 (const uint8_t *)"mag calibration START: rotate slowly through all axes, then send N\r\n",
                 (uint16_t)(sizeof("mag calibration START: rotate slowly through all axes, then send N\r\n") - 1U));
         } else if (ch == 'N') {
@@ -2188,13 +2188,13 @@ void Test_Attitude_Update(void)
                                   (long)(calibration.scale[1] * 1000.0f),
                                   (long)(calibration.scale[2] * 1000.0f));
                 if ((length > 0) && (length < (int)sizeof(response))) {
-                    (void)BSP_UART_WriteFrame(UART_PORT1,
+                    (void)BSP_UART_WriteFrame(DEBUG_UART_PORT,
                                               (const uint8_t *)response,
                                               (uint16_t)length);
                 }
             } else {
                 (void)BSP_UART_WriteFrame(
-                    UART_PORT1,
+                    DEBUG_UART_PORT,
                     (const uint8_t *)"mag calibration FAILED: need >=300 samples and full XYZ rotation; send M to retry\r\n",
                     (uint16_t)(sizeof("mag calibration FAILED: need >=300 samples and full XYZ rotation; send M to retry\r\n") - 1U));
             }
@@ -2202,7 +2202,7 @@ void Test_Attitude_Update(void)
             Attitude_ZeroYaw();
             Heading_Reset();
             (void)BSP_UART_WriteFrame(
-                UART_PORT1,
+                DEBUG_UART_PORT,
                 (const uint8_t *)"gyro yaw zeroed\r\n",
                 (uint16_t)(sizeof("gyro yaw zeroed\r\n") - 1U));
         }

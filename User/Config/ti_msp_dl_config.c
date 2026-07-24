@@ -59,7 +59,8 @@ SYSCONFIG_WEAK void SYSCFG_DL_init(void)
     SYSCFG_DL_PWM_SERVO_init();
     SYSCFG_DL_QEI_FRONT_LEFT_init();
     SYSCFG_DL_QEI_FRONT_RIGHT_init();
-    SYSCFG_DL_I2C_SENSOR_init();
+        SYSCFG_DL_I2C_SENSOR_init();
+    SYSCFG_DL_UART_DEBUG_init();
     SYSCFG_DL_UART_K210_init();
     SYSCFG_DL_UART_E220_init();
     SYSCFG_DL_SPI_DISPLAY_init();
@@ -113,7 +114,8 @@ SYSCONFIG_WEAK void SYSCFG_DL_initPower(void)
     DL_TimerG_reset(PWM_SERVO_INST);
     DL_TimerG_reset(QEI_FRONT_LEFT_INST);
     DL_TimerG_reset(QEI_FRONT_RIGHT_INST);
-    DL_I2C_reset(I2C_SENSOR_INST);
+        DL_I2C_reset(I2C_SENSOR_INST);
+    DL_UART_Main_reset(UART_DEBUG_INST);
     DL_UART_Main_reset(UART_K210_INST);
     DL_UART_Main_reset(UART_E220_INST);
     DL_SPI_reset(SPI_DISPLAY_INST);
@@ -129,7 +131,8 @@ SYSCONFIG_WEAK void SYSCFG_DL_initPower(void)
     DL_TimerG_enablePower(PWM_SERVO_INST);
     DL_TimerG_enablePower(QEI_FRONT_LEFT_INST);
     DL_TimerG_enablePower(QEI_FRONT_RIGHT_INST);
-    DL_I2C_enablePower(I2C_SENSOR_INST);
+        DL_I2C_enablePower(I2C_SENSOR_INST);
+    DL_UART_Main_enablePower(UART_DEBUG_INST);
     DL_UART_Main_enablePower(UART_K210_INST);
     DL_UART_Main_enablePower(UART_E220_INST);
     DL_SPI_enablePower(SPI_DISPLAY_INST);
@@ -173,6 +176,10 @@ SYSCONFIG_WEAK void SYSCFG_DL_GPIO_init(void)
     DL_GPIO_enableHiZ(GPIO_I2C_SENSOR_IOMUX_SDA);
     DL_GPIO_enableHiZ(GPIO_I2C_SENSOR_IOMUX_SCL);
 
+        DL_GPIO_initPeripheralOutputFunction(
+        GPIO_UART_DEBUG_IOMUX_TX, GPIO_UART_DEBUG_IOMUX_TX_FUNC);
+    DL_GPIO_initPeripheralInputFunction(
+        GPIO_UART_DEBUG_IOMUX_RX, GPIO_UART_DEBUG_IOMUX_RX_FUNC);
     DL_GPIO_initPeripheralOutputFunction(
         GPIO_UART_K210_IOMUX_TX, GPIO_UART_K210_IOMUX_TX_FUNC);
     DL_GPIO_initPeripheralInputFunction(
@@ -186,8 +193,6 @@ SYSCONFIG_WEAK void SYSCFG_DL_GPIO_init(void)
         GPIO_SPI_DISPLAY_IOMUX_SCLK, GPIO_SPI_DISPLAY_IOMUX_SCLK_FUNC);
     DL_GPIO_initPeripheralOutputFunction(
         GPIO_SPI_DISPLAY_IOMUX_PICO, GPIO_SPI_DISPLAY_IOMUX_PICO_FUNC);
-    DL_GPIO_initPeripheralInputFunction(
-        GPIO_SPI_DISPLAY_IOMUX_POCI, GPIO_SPI_DISPLAY_IOMUX_POCI_FUNC);
     DL_GPIO_initPeripheralOutputFunction(
         GPIO_SPI_DISPLAY_IOMUX_CS0, GPIO_SPI_DISPLAY_IOMUX_CS0_FUNC);
     DL_GPIO_initPeripheralOutputFunction(
@@ -555,6 +560,46 @@ SYSCONFIG_WEAK void SYSCFG_DL_I2C_SENSOR_init(void) {
 
 }
 
+static const DL_UART_Main_ClockConfig gUART_DEBUGClockConfig = {
+    .clockSel    = DL_UART_MAIN_CLOCK_BUSCLK,
+    .divideRatio = DL_UART_MAIN_CLOCK_DIVIDE_RATIO_1
+};
+
+static const DL_UART_Main_Config gUART_DEBUGConfig = {
+    .mode        = DL_UART_MAIN_MODE_NORMAL,
+    .direction   = DL_UART_MAIN_DIRECTION_TX_RX,
+    .flowControl = DL_UART_MAIN_FLOW_CONTROL_NONE,
+    .parity      = DL_UART_MAIN_PARITY_NONE,
+    .wordLength  = DL_UART_MAIN_WORD_LENGTH_8_BITS,
+    .stopBits    = DL_UART_MAIN_STOP_BITS_ONE
+};
+
+SYSCONFIG_WEAK void SYSCFG_DL_UART_DEBUG_init(void)
+{
+    DL_UART_Main_setClockConfig(
+        UART_DEBUG_INST, (DL_UART_Main_ClockConfig *) &gUART_DEBUGClockConfig);
+
+    DL_UART_Main_init(UART_DEBUG_INST, (DL_UART_Main_Config *) &gUART_DEBUGConfig);
+
+    /* 32 MHz BUSCLK, 115200 bit/s, actual baud rate 115211.52. */
+    DL_UART_Main_setOversampling(UART_DEBUG_INST, DL_UART_OVERSAMPLING_RATE_16X);
+    DL_UART_Main_setBaudRateDivisor(
+        UART_DEBUG_INST,
+        UART_DEBUG_IBRD_32_MHZ_115200_BAUD,
+        UART_DEBUG_FBRD_32_MHZ_115200_BAUD);
+
+    DL_UART_Main_enableInterrupt(
+        UART_DEBUG_INST,
+        DL_UART_MAIN_INTERRUPT_RX | DL_UART_MAIN_INTERRUPT_TX);
+
+    DL_UART_Main_enableFIFOs(UART_DEBUG_INST);
+    DL_UART_Main_setRXFIFOThreshold(
+        UART_DEBUG_INST, DL_UART_RX_FIFO_LEVEL_ONE_ENTRY);
+    DL_UART_Main_setTXFIFOThreshold(
+        UART_DEBUG_INST, DL_UART_TX_FIFO_LEVEL_3_4_EMPTY);
+
+    DL_UART_Main_enable(UART_DEBUG_INST);
+}
 static const DL_UART_Main_ClockConfig gUART_K210ClockConfig = {
     .clockSel    = DL_UART_MAIN_CLOCK_BUSCLK,
     .divideRatio = DL_UART_MAIN_CLOCK_DIVIDE_RATIO_1

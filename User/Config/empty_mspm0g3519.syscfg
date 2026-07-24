@@ -22,6 +22,7 @@ const QEI_FRONT_RIGHT = QEI.addInstance();
 const UART          = scripting.addModule("/ti/driverlib/UART", {}, false);
 const UART_K210     = UART.addInstance();
 const UART_E220     = UART.addInstance();
+const UART_DEBUG    = UART.addInstance();
 const I2C           = scripting.addModule("/ti/driverlib/I2C", {}, false);
 const I2C_SENSOR    = I2C.addInstance();
 const SPI           = scripting.addModule("/ti/driverlib/SPI", {}, false);
@@ -281,7 +282,22 @@ QEI_FRONT_RIGHT.peripheral.$assign         = "TIMG9";
 QEI_FRONT_RIGHT.peripheral.ccp0Pin.$assign = "PB29";
 QEI_FRONT_RIGHT.peripheral.ccp1Pin.$assign = "PB30";
 
-/* K210 与 E220 各使用一路独立 UART，均为 115200-8-N-1。 */
+/*
+ * 三路 UART 独立分工，均为 115200-8-N-1：
+ * UART0：板载 CH340 / Type-C 调试串口，PA10 TX、PA11 RX；
+ * UART1：K210，PB4 TX、PB5 RX；
+ * UART4：E220，PB10 TX、PB11 RX。
+ */
+UART_DEBUG.$name                    = "UART_DEBUG";
+UART_DEBUG.targetBaudRate           = 115200;
+UART_DEBUG.enableFIFO               = true;
+UART_DEBUG.rxFifoThreshold          = "DL_UART_RX_FIFO_LEVEL_ONE_ENTRY";
+UART_DEBUG.txFifoThreshold          = "DL_UART_TX_FIFO_LEVEL_3_4_EMPTY";
+UART_DEBUG.enabledInterrupts        = ["RX","TX"];
+UART_DEBUG.peripheral.$assign       = "UART0";
+UART_DEBUG.peripheral.txPin.$assign = "PA10";
+UART_DEBUG.peripheral.rxPin.$assign = "PA11";
+
 UART_K210.$name                    = "UART_K210";
 UART_K210.targetBaudRate           = 115200;
 UART_K210.enableFIFO               = true;
@@ -298,7 +314,7 @@ UART_E220.enableFIFO               = true;
 UART_E220.rxFifoThreshold          = "DL_UART_RX_FIFO_LEVEL_ONE_ENTRY";
 UART_E220.txFifoThreshold          = "DL_UART_TX_FIFO_LEVEL_3_4_EMPTY";
 UART_E220.enabledInterrupts        = ["RX","TX"];
-UART_E220.peripheral.$assign       = "Any";
+UART_E220.peripheral.$assign       = "UART4";
 UART_E220.peripheral.txPin.$assign = "PB10";
 UART_E220.peripheral.rxPin.$assign = "PB11";
 
@@ -340,6 +356,8 @@ SPI_ICM20948.peripheral.mosiPin.$assign = "PB15";
 SPI_ICM20948.peripheral.misoPin.$assign = "PB14";
 
 SPI_DISPLAY.$name                      = "SPI_DISPLAY";
+/* TFT 只发送，不需要 POCI/MISO；释放 PA10 给 UART0_TX。 */
+SPI_DISPLAY.direction                  = "PICO";
 SPI_DISPLAY.targetBitRate              = 8000000;
 SPI_DISPLAY.rxFifoThreshold            = "DL_SPI_RX_FIFO_LEVEL_ONE_FRAME";
 SPI_DISPLAY.txFifoThreshold            = "DL_SPI_TX_FIFO_LEVEL_ONE_FRAME";

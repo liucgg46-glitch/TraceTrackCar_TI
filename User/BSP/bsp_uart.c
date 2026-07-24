@@ -15,8 +15,9 @@ typedef struct {
 } UART_Runtime_t;
 
 static const UART_Cfg_t s_uart_cfg[UART_PORT_COUNT] = {
-    [UART_PORT1] = {UART_E220_INST, UART_E220_INST_INT_IRQN},
-    [UART_PORT2] = {UART_K210_INST, UART_K210_INST_INT_IRQN}
+    [UART_PORT1]      = {UART_E220_INST,  UART_E220_INST_INT_IRQN},
+    [UART_PORT2]      = {UART_K210_INST,  UART_K210_INST_INT_IRQN},
+    [UART_PORT_DEBUG] = {UART_DEBUG_INST, UART_DEBUG_INST_INT_IRQN}
 };
 
 static UART_Runtime_t s_uart_rt[UART_PORT_COUNT];
@@ -353,6 +354,11 @@ void BSP_UART_USART_ISR(UART_Port_t port)
 void BSP_UART_DMA_TX_ISR(UART_Port_t port)
 {
     (void)port;
+}
+
+void UART_DEBUG_INST_IRQHandler(void)
+{
+    BSP_UART_USART_ISR(UART_PORT_DEBUG);
 }
 
 void UART_E220_INST_IRQHandler(void)

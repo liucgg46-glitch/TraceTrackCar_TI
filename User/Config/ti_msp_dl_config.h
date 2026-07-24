@@ -176,6 +176,22 @@ extern "C" {
 #define GPIO_I2C_SENSOR_IOMUX_SCL_FUNC                  IOMUX_PINCM2_PF_I2C0_SCL
 
 
+/* Defines for UART_DEBUG */
+#define UART_DEBUG_INST                                                     UART0
+#define UART_DEBUG_INST_FREQUENCY                                        32000000
+#define UART_DEBUG_INST_IRQHandler                               UART0_IRQHandler
+#define UART_DEBUG_INST_INT_IRQN                                   UART0_INT_IRQn
+#define GPIO_UART_DEBUG_RX_PORT                                             GPIOA
+#define GPIO_UART_DEBUG_TX_PORT                                             GPIOA
+#define GPIO_UART_DEBUG_RX_PIN                                     DL_GPIO_PIN_11
+#define GPIO_UART_DEBUG_TX_PIN                                     DL_GPIO_PIN_10
+#define GPIO_UART_DEBUG_IOMUX_RX                                  (IOMUX_PINCM22)
+#define GPIO_UART_DEBUG_IOMUX_TX                                  (IOMUX_PINCM21)
+#define GPIO_UART_DEBUG_IOMUX_RX_FUNC                   IOMUX_PINCM22_PF_UART0_RX
+#define GPIO_UART_DEBUG_IOMUX_TX_FUNC                   IOMUX_PINCM21_PF_UART0_TX
+#define UART_DEBUG_BAUD_RATE                                             (115200)
+#define UART_DEBUG_IBRD_32_MHZ_115200_BAUD                                   (17)
+#define UART_DEBUG_FBRD_32_MHZ_115200_BAUD                                   (23)
 /* Defines for UART_K210 */
 #define UART_K210_INST                                                     UART1
 #define UART_K210_INST_FREQUENCY                                        32000000
@@ -220,10 +236,6 @@ extern "C" {
 #define GPIO_SPI_DISPLAY_PICO_PIN                                 DL_GPIO_PIN_2
 #define GPIO_SPI_DISPLAY_IOMUX_PICO                             (IOMUX_PINCM15)
 #define GPIO_SPI_DISPLAY_IOMUX_PICO_FUNC             IOMUX_PINCM15_PF_SPI0_PICO
-#define GPIO_SPI_DISPLAY_POCI_PORT                                        GPIOA
-#define GPIO_SPI_DISPLAY_POCI_PIN                                DL_GPIO_PIN_10
-#define GPIO_SPI_DISPLAY_IOMUX_POCI                             (IOMUX_PINCM21)
-#define GPIO_SPI_DISPLAY_IOMUX_POCI_FUNC             IOMUX_PINCM21_PF_SPI0_POCI
 /* GPIO configuration for SPI_DISPLAY */
 #define GPIO_SPI_DISPLAY_SCLK_PORT                                        GPIOB
 #define GPIO_SPI_DISPLAY_SCLK_PIN                                 DL_GPIO_PIN_3
@@ -406,6 +418,7 @@ void SYSCFG_DL_PWM_SERVO_init(void);
 void SYSCFG_DL_QEI_FRONT_LEFT_init(void);
 void SYSCFG_DL_QEI_FRONT_RIGHT_init(void);
 void SYSCFG_DL_I2C_SENSOR_init(void);
+void SYSCFG_DL_UART_DEBUG_init(void);
 void SYSCFG_DL_UART_K210_init(void);
 void SYSCFG_DL_UART_E220_init(void);
 void SYSCFG_DL_SPI_DISPLAY_init(void);
