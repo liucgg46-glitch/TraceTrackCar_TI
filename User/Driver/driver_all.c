@@ -17,7 +17,7 @@ void Driver_Init(void)
 {
     /*
      * E220 使用逻辑端口 UART_PORT_E220，对应 MSPM0G3519 硬件 UART4。
-     * 普通直连或 E220 模式由 BSP/vehicle_config.h 选择。
+     * UART4 在 TI 工程中固定连接 E220，不再使用链路选择宏。
      */
     Drv_E220_Init();
 

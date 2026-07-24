@@ -515,7 +515,6 @@ void Test_UART_Stats(void)
     BSP_UART_WriteFrame(DEBUG_UART_PORT, (const uint8_t *)buf, (uint16_t)n);
 }
 
-#if VEHICLE_UART1_E220_ENABLE
 
 #define TEST_E220_SEND_PERIOD_MS          1000U
 #define TEST_E220_RX_TIMEOUT_MS           2500U
@@ -809,11 +808,9 @@ static void Test_E220_LcdUpdate(void)
     }
 }
 
-#endif
 
 void Test_E220_Link_Update(void)
 {
-#if VEHICLE_UART1_E220_ENABLE
     static uint8_t initialized = 0U;
     static uint8_t rx_frame[TEST_E220_RX_FRAME_MAX_LEN];
     static uint8_t rx_length = 0U;
@@ -902,7 +899,6 @@ void Test_E220_Link_Update(void)
     Test_E220_OledUpdate();
     Test_E220_LcdUpdate();    Test_E220_DebugUpdate();
 
-#endif
 }
 
 /* 扫描 I2C0 总线上的 7 位从设备地址。 */

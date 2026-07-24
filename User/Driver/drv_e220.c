@@ -3,7 +3,6 @@
 #include "bsp_gpio.h"
 #include "bsp_uart.h"
 
-#if VEHICLE_UART1_E220_ENABLE
 typedef struct {
     uint16_t len;
     uint8_t data[DRV_E220_TX_FRAME_MAX_SIZE];
@@ -93,32 +92,21 @@ static BSP_Status_t Drv_E220_DeferFrame(const uint8_t *data, uint16_t len)
 
     return BSP_OK;
 }
-#endif
 
 void Drv_E220_Init(void)
 {
-#if VEHICLE_UART1_E220_ENABLE
     Drv_E220_ResetQueue();
     BSP_UART_SetTxReadyGuard(UART_PORT_E220, Drv_E220_TxReadyGuard);
     BSP_UART_SetTxDeferredHandler(UART_PORT_E220, Drv_E220_DeferFrame);
-#else
-    BSP_UART_SetTxReadyGuard(UART_PORT_E220, 0);
-    BSP_UART_SetTxDeferredHandler(UART_PORT_E220, 0);
-#endif
 }
 
 uint8_t Drv_E220_IsReady(void)
 {
-#if VEHICLE_UART1_E220_ENABLE
     return Drv_E220_TxReadyGuard();
-#else
-    return 1U;
-#endif
 }
 
 void Drv_E220_Task(void)
 {
-#if VEHICLE_UART1_E220_ENABLE
     Drv_E220_TxFrame_t *frame;
     BSP_Status_t status;
     uint32_t primask;
@@ -139,7 +127,6 @@ void Drv_E220_Task(void)
     s_tx_count--;
     s_tx_retried_frames++;
     BSP_ExitCritical(primask);
-#endif
 }
 
 BSP_Status_t Drv_E220_GetTxStats(Drv_E220_TxStats_t *stats)
@@ -151,19 +138,11 @@ BSP_Status_t Drv_E220_GetTxStats(Drv_E220_TxStats_t *stats)
     }
 
     primask = BSP_EnterCritical();
-#if VEHICLE_UART1_E220_ENABLE
     stats->queued_frames = s_tx_count;
     stats->deferred_frames = s_tx_deferred_frames;
     stats->retried_frames = s_tx_retried_frames;
     stats->queue_full_frames = s_tx_queue_full_frames;
     stats->oversize_frames = s_tx_oversize_frames;
-#else
-    stats->queued_frames = 0U;
-    stats->deferred_frames = 0U;
-    stats->retried_frames = 0U;
-    stats->queue_full_frames = 0U;
-    stats->oversize_frames = 0U;
-#endif
     BSP_ExitCritical(primask);
 
     return BSP_OK;
@@ -171,7 +150,6 @@ BSP_Status_t Drv_E220_GetTxStats(Drv_E220_TxStats_t *stats)
 
 void Drv_E220_ClearTxStats(void)
 {
-#if VEHICLE_UART1_E220_ENABLE
     uint32_t primask = BSP_EnterCritical();
 
     s_tx_deferred_frames = 0U;
@@ -180,5 +158,4 @@ void Drv_E220_ClearTxStats(void)
     s_tx_oversize_frames = 0U;
 
     BSP_ExitCritical(primask);
-#endif
 }
