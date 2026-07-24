@@ -52,6 +52,11 @@ void Test_AsyncDisplay_Update(void);
 /* 应用和通信测试。 */
 void Test_TaskFSM_Log(void);
 void Test_K210_CommUpdate(void);
+void Test_K210_DigitCommUpdate(void);
+void Test_K210_RoadCommUpdate(void);
+void Test_K210_VisionCommUpdate(void);
+void Test_K210_RoadProfileUpdate(void);
+void Test_K210_SingleDigitCommUpdate(void);
 
 #endif /* PROJECT_TEST_TASKS_ENABLE */
 

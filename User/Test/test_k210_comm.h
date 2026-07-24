@@ -8,8 +8,8 @@ extern "C" {
 #endif
 
 /*
- * K210 专项通信测试公共接口。
- * 数字、道路和配置档位测试均集中在 test_k210_comm.c。
+ * K210专项通信测试公共接口。
+ * 单数字、多数字、道路、视觉和配置档位测试均集中在test_k210_comm.c。
  */
 extern volatile K210_Comm_Info_t g_k210_digit_debug_info;
 extern volatile K210_Comm_Info_t g_k210_road_debug_info;

@@ -8,20 +8,17 @@
 
 /*
  * ============================================================================
- * K210 统一通信测试
+ * K210统一通信测试
  * ============================================================================
  *
  * 文件编码：UTF-8
  *
- * K210 通信：
- *   K210 IO8 TX -> MSPM0G3519 PB5 / UART1 RX
- *   K210 IO6 RX <- MSPM0G3519 PB4 / UART1 TX
+ * 端口由BSP语义宏统一选择：
+ *   UART_PORT_K210连接K210；
+ *   DEBUG_UART_PORT输出调试日志。
  *
- * 调试输出：
- *   MSPM0G3519 PA10 / UART0 TX -> 核心板 CH340 Type-C 串口
- *
- * 本文件统一包含数字识别、道路识别及后续视觉通信测试。
- * 所有日志通过 DEBUG_UART_PORT 输出，不依赖 printf 串口重定向。
+ * 本文件统一包含单数字、多数字、道路、视觉和配置档位通信测试。
+ * 不依赖printf串口重定向，可在STM32F407和MSPM0G3519工程间直接复用。
  * ============================================================================
  */
 
@@ -389,3 +386,67 @@ void Test_K210_RoadProfileUpdate(void)
     }
 }
 
+void Test_K210_SingleDigitCommUpdate(void)
+{
+    static uint32_t last_status_ms = 0U;
+    K210_Comm_Info_t info;
+    uint8_t digit;
+    uint8_t valid;
+    uint8_t confidence;
+    char buf[192];
+    int length;
+
+    /*
+     * 读取K210发送的旧版单数字帧：
+     * AA 55 01 DIGIT VALID CONF CHECK
+     */
+    if (K210_Comm_GetNewDigit(&digit, &valid, &confidence) == BSP_OK) {
+        length = snprintf(
+            buf,
+            sizeof(buf),
+            "K210 DIGIT RX digit=%u valid=%u confidence=%u\r\n",
+            (unsigned int)digit,
+            (unsigned int)valid,
+            (unsigned int)confidence
+        );
+
+        if ((length > 0) && (length < (int)sizeof(buf))) {
+            Test_K210_SendText(buf);
+        }
+    }
+
+    /* 每500 ms打印一次通信总状态。 */
+    if ((uint32_t)(BSP_GetTickMs() - last_status_ms) <
+        K210_DIGIT_LOG_INTERVAL_MS) {
+        return;
+    }
+
+    last_status_ms = BSP_GetTickMs();
+
+    if (K210_Comm_GetInfo(&info) != BSP_OK) {
+        Test_K210_SendText("K210 GET INFO ERROR\r\n");
+        return;
+    }
+
+    g_k210_digit_debug_info = info;
+
+    length = snprintf(
+        buf,
+        sizeof(buf),
+        "K210 STATUS online=%u frames=%lu digit=%u valid=%u conf=%u "
+        "check_err=%lu format_err=%lu timeout=%lu last_rx=%lu\r\n",
+        (unsigned int)info.online,
+        (unsigned long)info.valid_frame_count,
+        (unsigned int)info.digit,
+        (unsigned int)info.digit_valid,
+        (unsigned int)info.digit_confidence,
+        (unsigned long)info.checksum_error_count,
+        (unsigned long)info.format_error_count,
+        (unsigned long)info.timeout_count,
+        (unsigned long)info.last_rx_ms
+    );
+
+    if ((length > 0) && (length < (int)sizeof(buf))) {
+        Test_K210_SendText(buf);
+    }
+}

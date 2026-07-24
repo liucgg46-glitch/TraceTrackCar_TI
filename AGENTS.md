@@ -48,3 +48,9 @@
 - 新增或移动参与固件的 `.c` 文件时，必须同步检查 `keil/TraceTrackCar_TI.uvprojx`、`ticlang/makefile`、`gcc/makefile` 和 `iar/makefile`。
 - Makefile 正式构建默认不加入 `User/Test/*.c`；专项测试构建显式使用 `BUILD_TESTS=1`。
 - 正式固件保持 `PROJECT_TEST_TASKS_ENABLE=0U`；专项测试完成后恢复正式任务表再做最终构建。用户明确处于测试阶段时，不擅自替用户关闭测试配置。
+# STM32与MSPM0上层接口同步规则
+
+- 两个平台的Common、Algorithm、Route、APP和Test公共API、结构体字段及业务宏应保持同名同义。
+- 上层串口代码只使用UART_PORT_K210、UART_PORT_E220和DEBUG_UART_PORT，不直接使用具体USART/UART编号、GPIO、DMA或中断宏。
+- 芯片寄存器、引脚复用、DMA和中断差异只能放在BSP、Config和启动文件中，禁止在上层伪造另一平台的底层宏。
+- 从另一平台复制APP或Test文件前，先确认对应公共头文件已同步；不得通过修改上层变量名规避接口差异。
