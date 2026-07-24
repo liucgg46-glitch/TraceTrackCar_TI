@@ -56,6 +56,11 @@ static inline uint32_t BSP_GetCoreClockHz(void)
     return CPUCLK_FREQ;
 }
 
+/*
+ * 返回用于测试和设备区分的32位芯片标识哈希。
+ * 上层不得直接访问芯片专用UID地址或Factory Region寄存器。
+ */
+uint32_t BSP_GetDeviceIdHash(void);
 #ifdef __cplusplus
 }
 #endif

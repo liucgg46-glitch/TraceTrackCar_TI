@@ -38,8 +38,8 @@ extern "C" {
 #define APP_SCHEDULER_TASK_LIST_DEFINE()                                            \
 Task_t task_list[] = {                                                              \
 	{ AppDiagnostics_HeartbeatUpdate, 10U, 0U },       \
-    { AppTask_BSP_Background,  1U, 0U }, \
-    { Test_E220_Link_Update,  10U, 0U }, \
+	{ AppTask_BSP_Background,          1U, 0U }, \
+	{ Test_E220_Link_Update,          10U, 0U }, \
 };                                                       \
 const uint8_t TASK_NUM =                                 \
     (uint8_t)(sizeof(task_list) / sizeof(task_list[0]))

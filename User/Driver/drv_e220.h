@@ -9,11 +9,14 @@ extern "C" {
 #endif
 
 /*
- * USART1 使用的 E220 透明传输适配层。
+ * MSPM0G3519的E220透明传输适配层。
  *
- * UART 电气参数仍在 BSP/bsp_uart.h 中配置：
- *   USART1 TX 使用 PA9，RX 使用 PA10，115200、8N1、无硬件流控。
- * E220 AUX 使用 BSP_GPIO_E220_AUX（PE6），按普通 GPIO 输入轮询。
+ * UART_PORT_E220对应硬件UART4：
+ *   PB10 -> E220 RXD；
+ *   PB11 <- E220 TXD；
+ *   PB28 <- E220 AUX。
+ *
+ * E220模块使用115200、8N1；透明传输模式下M0、M1由硬件可靠拉低。
  */
 #ifndef DRV_E220_TX_QUEUE_DEPTH
 #define DRV_E220_TX_QUEUE_DEPTH          16U

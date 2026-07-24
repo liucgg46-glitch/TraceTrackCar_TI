@@ -34,6 +34,7 @@
 #include "drv_icm20948.h"
 #include "drv_status_light.h"
 #include "drv_buzzer.h"
+#include "drv_e220.h"
 #include "task_fsm.h"
 #include "k210_comm.h"
 #include "bsp_systick.h"
@@ -500,7 +501,6 @@ void Test_UART_Stats(void)
 #define TEST_E220_START_PHASE_MIN_MS      100U
 #define TEST_E220_START_PHASE_SPAN_MS     800U
 #define TEST_E220_RX_FRAME_MAX_LEN        32U
-#define TEST_E220_UID_BASE_ADDRESS        0x1FFF7A10UL
 
 typedef struct {
     uint32_t tx_value;
@@ -518,9 +518,7 @@ static Test_E220_LinkState_t s_test_e220_state;
 
 static uint32_t Test_E220_GetUidHash(void)
 {
-    volatile const uint32_t *uid = (volatile const uint32_t *)TEST_E220_UID_BASE_ADDRESS;
-
-    return uid[0] ^ uid[1] ^ uid[2] ^ (uid[0] >> 16U) ^ (uid[2] << 7U);
+    return BSP_GetDeviceIdHash();
 }
 
 static uint8_t Test_E220_HexToValue(uint8_t ch, uint8_t *value)
@@ -588,6 +586,52 @@ static uint8_t Test_E220_ParseFrame(const uint8_t *frame,
     return 1U;
 }
 
+static void Test_E220_DebugUpdate(void)
+{
+    static uint32_t last_log_ms = 0U;
+    Drv_E220_TxStats_t e220_stats;
+    UART_Stats_t uart_stats;
+    uint32_t now_ms;
+    char text[224];
+    int length;
+
+    now_ms = BSP_GET_TICK();
+    if ((uint32_t)(now_ms - last_log_ms) < 500U) {
+        return;
+    }
+    last_log_ms = now_ms;
+
+    if ((Drv_E220_GetTxStats(&e220_stats) != BSP_OK) ||
+        (BSP_UART_GetStats(UART_PORT_E220, &uart_stats) != BSP_OK)) {
+        return;
+    }
+
+    length = snprintf(
+        text,
+        sizeof(text),
+        "E220 self=%04X aux=%u tx=%lu rx=%lu count=%lu link=%s "
+        "queue=%u defer=%lu retry=%lu uart_rx=%u uart_tx=%u\r\n",
+        (unsigned int)s_test_e220_state.self_id,
+        (unsigned int)BSP_GPIO_Read(BSP_GPIO_E220_AUX),
+        (unsigned long)s_test_e220_state.tx_value,
+        (unsigned long)s_test_e220_state.rx_value,
+        (unsigned long)s_test_e220_state.rx_count,
+        (s_test_e220_state.online != 0U) ? "OK" : "WAIT",
+        (unsigned int)e220_stats.queued_frames,
+        (unsigned long)e220_stats.deferred_frames,
+        (unsigned long)e220_stats.retried_frames,
+        (unsigned int)uart_stats.rx_count,
+        (unsigned int)uart_stats.tx_count
+    );
+
+    if ((length > 0) && (length < (int)sizeof(text))) {
+        (void)BSP_UART_WriteFrame(
+            DEBUG_UART_PORT,
+            (const uint8_t *)text,
+            (uint16_t)length
+        );
+    }
+}
 static void Test_E220_OledUpdate(void)
 {
     static uint32_t displayed_revision = 0U;
@@ -765,7 +809,18 @@ void Test_E220_Link_Update(void)
 
     if (initialized == 0U) {
         uid_hash = Test_E220_GetUidHash();
-        s_test_e220_state.self_id = (uint16_t)(uid_hash ^ (uid_hash >> 16U));
+
+#if (TEST_E220_SELF_ID_OVERRIDE != 0U)
+        s_test_e220_state.self_id =
+            (uint16_t)TEST_E220_SELF_ID_OVERRIDE;
+#else
+        s_test_e220_state.self_id =
+            (uint16_t)(uid_hash ^ (uid_hash >> 16U));
+        if (s_test_e220_state.self_id == 0U) {
+            s_test_e220_state.self_id = 1U;
+        }
+#endif
+
         next_send_ms = now_ms + TEST_E220_START_PHASE_MIN_MS +
                        (uid_hash % TEST_E220_START_PHASE_SPAN_MS);
         s_test_e220_state.revision++;
@@ -824,7 +879,8 @@ void Test_E220_Link_Update(void)
     }
 
     Test_E220_OledUpdate();
-    Test_E220_LcdUpdate();
+    Test_E220_LcdUpdate();    Test_E220_DebugUpdate();
+
 #endif
 }
 

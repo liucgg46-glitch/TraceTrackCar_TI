@@ -17,4 +17,18 @@
 #error "PROJECT_TEST_TASKS_ENABLE must be 0U or 1U"
 #endif
 
+/*
+ * E220双车测试本机ID：
+ *   0U：自动根据MSPM0 Factory Region生成；
+ *   1～0xFFFF：强制使用指定ID。
+ *
+ * 只有两块板显示相同SELF ID时才需要手动设置，并确保两块板使用不同值。
+ */
+#ifndef TEST_E220_SELF_ID_OVERRIDE
+#define TEST_E220_SELF_ID_OVERRIDE 0U
+#endif
+
+#if (TEST_E220_SELF_ID_OVERRIDE > 0xFFFFU)
+#error "TEST_E220_SELF_ID_OVERRIDE must be in range 0U to 0xFFFFU"
+#endif
 #endif /* __TEST_CONFIG_H */

@@ -55,7 +55,7 @@ static uint8_t Drv_E220_TxReadyGuard(void)
         return 0U;
     }
 
-    return (BSP_UART_IsTxBusy(UART_PORT1) == 0U) ? 1U : 0U;
+    return (BSP_UART_IsTxBusy(UART_PORT_E220) == 0U) ? 1U : 0U;
 }
 
 static BSP_Status_t Drv_E220_DeferFrame(const uint8_t *data, uint16_t len)
@@ -99,11 +99,11 @@ void Drv_E220_Init(void)
 {
 #if VEHICLE_UART1_E220_ENABLE
     Drv_E220_ResetQueue();
-    BSP_UART_SetTxReadyGuard(UART_PORT1, Drv_E220_TxReadyGuard);
-    BSP_UART_SetTxDeferredHandler(UART_PORT1, Drv_E220_DeferFrame);
+    BSP_UART_SetTxReadyGuard(UART_PORT_E220, Drv_E220_TxReadyGuard);
+    BSP_UART_SetTxDeferredHandler(UART_PORT_E220, Drv_E220_DeferFrame);
 #else
-    BSP_UART_SetTxReadyGuard(UART_PORT1, 0);
-    BSP_UART_SetTxDeferredHandler(UART_PORT1, 0);
+    BSP_UART_SetTxReadyGuard(UART_PORT_E220, 0);
+    BSP_UART_SetTxDeferredHandler(UART_PORT_E220, 0);
 #endif
 }
 
@@ -124,12 +124,12 @@ void Drv_E220_Task(void)
     uint32_t primask;
 
     if (s_tx_count == 0U || BSP_GPIO_Read(BSP_GPIO_E220_AUX) == 0U ||
-        BSP_UART_IsTxBusy(UART_PORT1) != 0U) {
+        BSP_UART_IsTxBusy(UART_PORT_E220) != 0U) {
         return;
     }
 
     frame = &s_tx_queue[s_tx_tail];
-    status = BSP_UART_WriteFrameNow(UART_PORT1, frame->data, frame->len);
+    status = BSP_UART_WriteFrameNow(UART_PORT_E220, frame->data, frame->len);
     if (status != BSP_OK) {
         return;
     }
