@@ -37,6 +37,54 @@ static uint16_t UART_Next(uint16_t value, uint16_t size)
     return (value >= size) ? 0U : value;
 }
 
+static void UART_PushRxByte(UART_Port_t port, uint8_t value)
+{
+    UART_Runtime_t *rt;
+    uint16_t next;
+
+    if (port >= UART_PORT_COUNT) {
+        return;
+    }
+
+    rt = &s_uart_rt[port];
+    next = UART_Next(rt->rx_head, UART_RX_BUF_SIZE);
+
+    if (next == rt->rx_tail) {
+        rt->rx_overflow++;
+        return;
+    }
+
+    s_uart_rx_ring[port][rt->rx_head] = value;
+    rt->rx_head = next;
+}
+
+/*
+ * RX中断仍是主要接收路径；后台任务同时轮询硬件FIFO作为兜底。
+ * 这样即使某个UART的NVIC/向量暂时没有进入，接收也不会完全失效。
+ * 调用周期为1 ms时，每次只搬空当前FIFO，不进行任何阻塞等待。
+ */
+static void UART_DrainRxFifo(UART_Port_t port)
+{
+    UART_Regs *inst;
+    uint32_t primask;
+
+    if (port >= UART_PORT_COUNT) {
+        return;
+    }
+
+    primask = BSP_EnterCritical();
+    inst = s_uart_cfg[port].inst;
+
+    while (!DL_UART_Main_isRXFIFOEmpty(inst)) {
+        UART_PushRxByte(
+            port,
+            (uint8_t)DL_UART_Main_receiveData(inst)
+        );
+    }
+
+    BSP_ExitCritical(primask);
+}
+
 static void UART_KickTx(UART_Port_t port)
 {
     UART_Runtime_t *rt;
@@ -322,9 +370,16 @@ void BSP_UART_ClearStats(UART_Port_t port)
 
 void BSP_UART_Task(UART_Port_t port)
 {
-    if (port < UART_PORT_COUNT) {
-        UART_KickTx(port);
+    if (port >= UART_PORT_COUNT) {
+        return;
     }
+
+    /*
+     * TX由环形缓冲区和中断推进；
+     * RX除中断外再轮询一次FIFO，避免接收中断异常时整条链路失效。
+     */
+    UART_DrainRxFifo(port);
+    UART_KickTx(port);
 }
 
 void BSP_UART_TaskAll(void)
@@ -339,7 +394,6 @@ void BSP_UART_TaskAll(void)
 
 void BSP_UART_USART_ISR(UART_Port_t port)
 {
-    UART_Runtime_t *rt;
     UART_Regs *inst;
     DL_UART_IIDX iidx;
 
@@ -347,23 +401,26 @@ void BSP_UART_USART_ISR(UART_Port_t port)
         return;
     }
 
-    rt = &s_uart_rt[port];
     inst = s_uart_cfg[port].inst;
+
     do {
         iidx = DL_UART_Main_getPendingInterrupt(inst);
+
         if (iidx == DL_UART_MAIN_IIDX_RX) {
-            while (!DL_UART_Main_isRXFIFOEmpty(inst)) {
-                uint16_t next = UART_Next(rt->rx_head, UART_RX_BUF_SIZE);
-                uint8_t value = DL_UART_Main_receiveData(inst);
-                if (next == rt->rx_tail) {
-                    rt->rx_overflow++;
-                } else {
-                    s_uart_rx_ring[port][rt->rx_head] = value;
-                    rt->rx_head = next;
-                }
-            }
+            UART_DrainRxFifo(port);
         } else if (iidx == DL_UART_MAIN_IIDX_TX) {
             UART_KickTx(port);
+        } else if ((iidx == DL_UART_MAIN_IIDX_OVERRUN_ERROR) ||
+                   (iidx == DL_UART_MAIN_IIDX_BREAK_ERROR) ||
+                   (iidx == DL_UART_MAIN_IIDX_PARITY_ERROR) ||
+                   (iidx == DL_UART_MAIN_IIDX_FRAMING_ERROR) ||
+                   (iidx == DL_UART_MAIN_IIDX_RX_TIMEOUT_ERROR) ||
+                   (iidx == DL_UART_MAIN_IIDX_NOISE_ERROR)) {
+            /*
+             * 错误中断发生时仍尝试取走FIFO中的有效字节，
+             * 后续可通过rx_overflow和专门错误计数继续诊断。
+             */
+            UART_DrainRxFifo(port);
         }
     } while (iidx != DL_UART_MAIN_IIDX_NO_INTERRUPT);
 }
