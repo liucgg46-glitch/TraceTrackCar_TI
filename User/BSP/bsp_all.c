@@ -1,10 +1,16 @@
 #include "bsp_all.h"
 
-BSP_Status_t BSP_InitAll(uint32_t system_core_clock_hz)
+BSP_Status_t BSP_InitAll(void)
 {
     BSP_Status_t ret;
 
-    ret = BSP_SysTick_Init(system_core_clock_hz);
+    /*
+     * TI SysConfig 生成的时钟、引脚、外设和 DMA 初始化属于板级职责。
+     * 必须在任何 BSP 模块访问外设前执行一次。
+     */
+    SYSCFG_DL_init();
+
+    ret = BSP_SysTick_Init(BSP_GetCoreClockHz());
     if (ret != BSP_OK) return ret;
 
     BSP_GPIO_InitAll();

@@ -42,12 +42,12 @@
 #include <stdint.h>
 
 /*
- * K210与STM32通信测试任务。
+ * K210 与 MSPM0G3519 通信测试任务。
  *
  * 功能：
- *   1. 读取K210发送的完整多数字快照；
- *   2. 通过USART1输出数字、置信度和横坐标；
- *   3. 每500ms输出一次通信状态和错误统计。
+ *   1. 读取 K210 发送的完整多数字快照；
+ *   2. 通过 DEBUG_UART_PORT 输出数字、置信度和横坐标；
+ *   3. 每 500 ms 输出一次通信状态和错误统计。
  *
  * 建议任务周期：
  *   { Test_K210_CommUpdate, 10U, 0U },
@@ -116,7 +116,7 @@ void Test_K210_CommUpdate(void)
 
         /*
          * 缓冲区仍有空间时添加回车换行，
-         * 然后通过USART1发送到串口助手。
+         * 然后通过 DEBUG_UART_PORT 发送到串口助手。
          */
         if ((used > 0) &&
             (used <= ((int)sizeof(buf) - 3))) {
@@ -176,7 +176,7 @@ void Test_K210_CommUpdate(void)
 
 
 
-//娴嬭瘯鍑芥暟锛孫LED闂儊
+/* LED1 每 500 ms 翻转一次，用于确认调度器持续运行。 */
 void Test_GPIO_Toggle(void)
 {
     static uint32_t last = 0;
@@ -210,7 +210,6 @@ void Test_StatusLight_Update(void)
     }
 }
 
-//娴嬭瘯浠ｇ爜锛岀數鏈鸿浆閫熼€愭笎鍙樺揩鍦ㄥ彉鎱?
 /*
  * 蜂鸣器按键测试：KEY1 持续鸣响，KEY2 停止，KEY3 每 500 ms 翻转一次。
  * 必须先以 10 ms 周期注册 Key_Update，再注册本任务。
@@ -292,7 +291,7 @@ void Test_PWM_Ramp(void)
     }
 }
 
-//娴嬭瘯缂栫爜鍣?
+/* 输出左右编码器增量、速度和累计计数。 */
 void Test_Encoder_Log(void)
 {
     char buf[96];
@@ -311,18 +310,18 @@ void Test_Encoder_Log(void)
 }
 
 /*
- * 74HC4051 澶氳矾澶嶇敤鐏板害妯″潡鏈€灏忔祴璇曚唬鐮?
+ * 74HC4051 八路模拟灰度模块最小测试。
  *
- * 纭欢杩炴帴锛?
- *   鐏板害 OUT/SIG/AO -> PC0 / ADC1_IN10 / BSP_ADC_CH1
- *   鐏板害 S0        -> PD10 / BSP_GPIO_GRAY_S0
- *   鐏板害 S1        -> PD11 / BSP_GPIO_GRAY_S1
- *   鐏板害 S2        -> PD12 / BSP_GPIO_GRAY_S2
+ * MSPM0G3519 接线：
+ *   灰度 OUT/SIG/AO -> PA25 / ADC0 通道 2 / BSP_ADC_CH1
+ *   灰度 S0         -> PA24 / BSP_GPIO_GRAY_S0
+ *   灰度 S1         -> PA31 / BSP_GPIO_GRAY_S1
+ *   灰度 S2         -> PC1  / BSP_GPIO_GRAY_S2
  *
- * 浠诲姟琛ㄥ缓璁細
+ * 任务表建议：
  *   { AppTask_BSP_Background, 1U,   0U },
- *   { Test_Gray4051_Update,  1U,   0U },
- *   { Test_Gray4051_Log,     200U, 0U },
+ *   { Test_Gray4051_Update,   1U,   0U },
+ *   { Test_Gray4051_Log,      200U, 0U },
  */
 
 #define GRAY_ADC_READ_RAW()   BSP_ADC_GetRaw(BSP_ADC_CH1)
@@ -393,41 +392,41 @@ void Test_Key_Update(void)
 
 #if BSP_KEY1_ENABLE
     if (BSP_Key_WasPressed(BSP_KEY1)) {
-        static const char message[] = "KEY1 PRESSED (PE4)\r\n";
+        static const char message[] = "KEY1 PRESSED\r\n";
         Test_Key_Send(message, (uint16_t)(sizeof(message) - 1U));
     }
     if (BSP_Key_WasReleased(BSP_KEY1)) {
-        static const char message[] = "KEY1 RELEASED (PE4)\r\n";
+        static const char message[] = "KEY1 RELEASED\r\n";
         Test_Key_Send(message, (uint16_t)(sizeof(message) - 1U));
     }
 #endif
 #if BSP_KEY2_ENABLE
     if (BSP_Key_WasPressed(BSP_KEY2)) {
-        static const char message[] = "KEY2 PRESSED (PE3)\r\n";
+        static const char message[] = "KEY2 PRESSED\r\n";
         Test_Key_Send(message, (uint16_t)(sizeof(message) - 1U));
     }
     if (BSP_Key_WasReleased(BSP_KEY2)) {
-        static const char message[] = "KEY2 RELEASED (PE3)\r\n";
+        static const char message[] = "KEY2 RELEASED\r\n";
         Test_Key_Send(message, (uint16_t)(sizeof(message) - 1U));
     }
 #endif
 #if BSP_KEY3_ENABLE
     if (BSP_Key_WasPressed(BSP_KEY3)) {
-        static const char message[] = "KEY3 PRESSED (PE2)\r\n";
+        static const char message[] = "KEY3 PRESSED\r\n";
         Test_Key_Send(message, (uint16_t)(sizeof(message) - 1U));
     }
     if (BSP_Key_WasReleased(BSP_KEY3)) {
-        static const char message[] = "KEY3 RELEASED (PE2)\r\n";
+        static const char message[] = "KEY3 RELEASED\r\n";
         Test_Key_Send(message, (uint16_t)(sizeof(message) - 1U));
     }
 #endif
 #if BSP_KEY4_ENABLE
     if (BSP_Key_WasPressed(BSP_KEY4)) {
-        static const char message[] = "KEY4 PRESSED (PE1)\r\n";
+        static const char message[] = "KEY4 PRESSED\r\n";
         Test_Key_Send(message, (uint16_t)(sizeof(message) - 1U));
     }
     if (BSP_Key_WasReleased(BSP_KEY4)) {
-        static const char message[] = "KEY4 RELEASED (PE1)\r\n";
+        static const char message[] = "KEY4 RELEASED\r\n";
         Test_Key_Send(message, (uint16_t)(sizeof(message) - 1U));
     }
 #endif
@@ -444,14 +443,15 @@ void Test_Key_Update(void)
 }
 
 /*
-*涓柇娴嬭瘯
-*/
+ * 外部中断计数测试。
+ * 中断回调只更新计数，日志由周期任务输出。
+ */
 static volatile uint32_t g_exti_count = 0;
 
 static void Test_EXTI_Callback(void *ctx)
 {
     (void)ctx;
-    g_exti_count++;   /* 涓柇閲屽彧鍋氳鏁帮紝涓?printf */
+    g_exti_count++;   /* 中断回调中只计数，不执行串口输出。 */
 }
 
 void Test_EXTI_Init(void)
@@ -466,7 +466,7 @@ void Test_EXTI_Log(void)
     BSP_UART_WriteFrame(DEBUG_UART_PORT, (const uint8_t *)buf, (uint16_t)n);
 }
 
-//涓插彛娴嬭瘯
+/* 调试串口回显测试。 */
 void Test_UART_Echo(void)
 {
     uint8_t ch;
@@ -826,7 +826,7 @@ void Test_E220_Link_Update(void)
 #endif
 }
 
-//娴嬭瘯i2c
+/* 扫描 I2C0 总线上的 7 位从设备地址。 */
 void Test_I2C_Scan(void)
 {
     uint8_t addr[16];
@@ -876,15 +876,15 @@ void Test_DriveProfile_Update(void)
 }
 
 /*
- * 鐢垫満寮€鐜懡浠ゆ祴璇曘€?
- * 涓插彛鍙戦€侊細
- *   w锛氬洓杞墠杩?300鈥?
- *   s锛氬洓杞悗閫€ 300鈥?
- *   a锛氬師鍦板乏杞?
- *   d锛氬師鍦板彸杞?
- *   0锛氬仠姝?
+ * 电机开环命令测试。
+ * 调试串口命令：
+ *   w：四轮前进，输出 300‰；
+ *   s：四轮后退，输出 300‰；
+ *   a：原地左转；
+ *   d：原地右转；
+ *   0：立即停车。
  *
- * 娉ㄦ剰锛氱涓€娆℃祴璇曞繀椤绘灦绌哄皬杞︼紝纭鏂瑰悜鍚庡啀钀藉湴銆?
+ * 首次测试必须架空车轮，确认电机映射和方向后再落地。
  */
 void Test_MotorCmd_Update(void)
 {
@@ -1212,7 +1212,7 @@ void Test_ChassisCmd_Log(void)
     }
 }
 
-//娴嬭瘯缂栫爜鍣ㄨ剦鍐?
+/* 输出四轮累计计数，用于标定每圈脉冲数。 */
 static void Test_CountPerRev_Print(void)
 {
     char buf[192];
@@ -1361,23 +1361,22 @@ void Test_MotionCmd_Log(void)
     }
 }
 
-//鐏板害浼犳劅鍣ㄥ贰绾挎祴璇?
 /*
- * Part4 鐏板害寰抗娴嬭瘯鍛戒护锛?
- *   1锛氬惎鍔ㄥ惊杩?
- *   0 / x锛氬仠姝㈠惊杩瑰苟鍋滆溅
- *   w锛氭妸褰撳墠 8 璺伆搴﹂噰鏍疯褰曚负鐧藉簳
- *   b锛氭妸褰撳墠 8 璺伆搴﹂噰鏍疯褰曚负榛戠嚎
- *   t锛氭牴鎹櫧搴?榛戠嚎璁板綍鐢熸垚闃堝€?
- *   d锛氭仮澶嶉粯璁ょ粺涓€闃堝€?LINE_DETECT_DEFAULT_THRESHOLD
- *   p锛氱珛鍗虫墦鍗颁竴娆?raw/threshold/mask/error/type/output
+ * 灰度循迹串口联调命令：
+ *   1：启动循迹；
+ *   0 或 x：停止循迹并停车；
+ *   w：把当前八路采样记录为白底；
+ *   b：把当前八路采样记录为黑线；
+ *   t：根据白底和黑线记录生成八路阈值；
+ *   d：恢复默认统一阈值 LINE_DETECT_DEFAULT_THRESHOLD；
+ *   p：立即打印 raw、threshold、mask、error、type 和输出。
  *
- * 鎺ㄨ崘鏍囧畾娴佺▼锛?
- *   1. 璁?8 璺紶鎰熷櫒閮藉鐫€鐧藉簳锛屽彂閫?w锛?
- *   2. 璁?8 璺紶鎰熷櫒閮藉帇鍦ㄩ粦绾夸笂锛屽彂閫?b锛?
- *   3. 鍙戦€?t 鐢熸垚闃堝€硷紱
- *   4. 鍙戦€?p 鐪?mask 鏄惁鍚堢悊锛?
- *   5. 鍙戦€?1 寮€濮嬪惊杩广€?
+ * 推荐标定流程：
+ *   1. 八路传感器全部对准白底，发送 w；
+ *   2. 八路传感器全部压在黑线上，发送 b；
+ *   3. 发送 t 生成阈值；
+ *   4. 发送 p 检查 mask；
+ *   5. 发送 1 开始循迹。
  */
 
 static const char *LineTypeName(LineType_t type)
@@ -1399,7 +1398,7 @@ static void Test_Line_PrintThreshold(void)
     char buf[128];
     int n;
 
-    /* Read the 8 thresholds currently used by line_detect. */
+    /* 读取 line_detect 当前实际使用的八路阈值。 */
     if (LineDetect_GetThresholdArray(threshold, LINE_DETECT_SENSOR_NUM) != BSP_OK) {
         return;
     }
@@ -1607,7 +1606,7 @@ void Test_RouteCmd_Update(void)
     }
 #endif
 
-    /* USART1 只保留路线复位命令，路线状态改由 LCD 显示。 */
+    /* 调试串口只保留路线复位命令，路线状态改由 LCD 显示。 */
     while (BSP_UART_GetChar(DEBUG_UART_PORT, &ch)) {
         if ((ch == 'r') || (ch == 'R')) {
             RouteManager_Reset(BSP_GetTickMs());
@@ -1617,10 +1616,11 @@ void Test_RouteCmd_Update(void)
 
 
 /*
- * VL53L1X independent log test.
- * The ranging state machine is advanced by Sensor_Update(); this function
- * only reads the current driver snapshot and prints it through USART1.
- * Suggested scheduler entry:
+ * VL53L1X 独立日志测试。
+ * 测距状态机由 Sensor_Update() 推进，本函数只读取当前驱动快照，
+ * 并通过 DEBUG_UART_PORT 输出状态。
+ *
+ * 建议任务周期：
  *   { Test_VL53L1X_Update, 200U, 0U },
  */
 static const char *Test_VL53L1X_StateName(Drv_VL53L1X_State_t state)
@@ -1700,7 +1700,7 @@ void Test_VL53L1X_Update(void)
  *   scaled = -8339, divisor = 1000, digits = 3
  *   输出 "-8.339"
  *
- * 不使用 printf 浮点功能，兼容 Keil ARMCC 默认配置。
+ * 不使用 printf 浮点格式，避免扩大固件并兼容精简 C 库配置。
  */
 static void Test_FormatFixed(char *out,
                              uint16_t out_size,
@@ -2223,7 +2223,7 @@ void Test_Attitude_Update(void)
     Test_FormatFixed(cal_accel_norm, sizeof(cal_accel_norm),
                      (long)(imu_info.gyro_cal_last_accel_norm_g * 100.0f), 100UL, 2U);
 
-    /* Before attitude becomes valid, show why motion is still interlocked. */
+    /* 姿态尚未有效时输出联锁原因，便于确认运动控制为何仍被禁止。 */
     if ((Sensor_GetAttitude(&sensor_attitude) != BSP_OK) ||
         (Attitude_GetInfo(&info) != BSP_OK)) {
         length = snprintf(line,
@@ -2373,7 +2373,7 @@ void Test_AsyncDisplay_Update(void)
                 break;
 
             case 3U:
-                ret = Drv_LcdTft_TryDrawString5x7(16U, 38U, "SPI1 DMA ASYNC",
+                ret = Drv_LcdTft_TryDrawString5x7(16U, 38U, "SPI0 DMA ASYNC",
                                                   DRV_LCD_COLOR_CYAN,
                                                   DRV_LCD_COLOR_BLACK);
                 break;

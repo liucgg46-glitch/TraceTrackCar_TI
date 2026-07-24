@@ -67,12 +67,11 @@ void SensorManager_Init(void)
 
 void Sensor_Update(void)
 {
-    /*
-     * ICM-20948 使用 SPI2；VL53L1X 与感为灰度传感器共用 I2C1。
-     * 三个驱动都采用状态机方式推进。ICM-20948 与 LCD 共用 SPI2 时，
-     * 会在 LCD DMA 占用总线时主动跳过本轮，下一次 1 ms 调度再重试。
-     *
-     * 上层 APP/Route 只读取缓存，不要再次直接调用各驱动的 Update()。
+        /*
+     * 外接 ICM20948 使用 SPI1；TFT 使用独立的 SPI0。
+     * VL53L1X 与 MCU-I2C 灰度模块共享 I2C0，HX711 使用 GPIO 时序。
+     * 所有器件均由状态机推进，上层 APP/Route 只读取缓存，
+     * 不得再次直接调用各驱动的 Update()。
      */
     (void)Drv_ICM20948_Update();
     /*

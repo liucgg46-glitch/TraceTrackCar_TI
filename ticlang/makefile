@@ -1,4 +1,5 @@
 MSPM0_SDK_INSTALL_DIR ?= D:/TI/CCS/mspm0_sdk_2_11_00_07
+BUILD_TESTS ?= 0
 
 ifneq ($(wildcard $(MSPM0_SDK_INSTALL_DIR)/imports.mak),)
 include $(MSPM0_SDK_INSTALL_DIR)/imports.mak
@@ -20,25 +21,20 @@ SYSCFG_C_FILES = $(filter %.c,$(SYSCFG_FILES))
 SYSCFG_H_FILES = $(filter %.h,$(SYSCFG_FILES))
 SYSCFG_OPT_FILES = $(filter %.opt,$(SYSCFG_FILES))
 
+TEST_C_FILES =
+ifeq ($(BUILD_TESTS),1)
+TEST_C_FILES := $(wildcard ../User/Test/*.c)
+endif
+
 USER_C_FILES = \
     ../User/Core/main.c \
-    ../User/BSP/bsp_common.c \
-    ../User/BSP/bsp_systick.c \
-    ../User/BSP/bsp_gpio.c \
-    ../User/BSP/bsp_exti.c \
-    ../User/BSP/bsp_key.c \
-    ../User/BSP/bsp_pwm.c \
-    ../User/BSP/bsp_encoder.c \
-    ../User/BSP/bsp_uart.c \
-    ../User/BSP/bsp_i2c.c \
-    ../User/BSP/bsp_spi.c \
-    ../User/BSP/bsp_adc.c \
-    ../User/BSP/bsp_all.c \
     $(wildcard ../User/Common/*.c) \
+    $(wildcard ../User/BSP/*.c) \
     $(wildcard ../User/Algorithm/*.c) \
+    $(wildcard ../User/Driver/*.c) \
     $(wildcard ../User/APP/*.c) \
     $(wildcard ../User/Route/*.c) \
-    $(wildcard ../User/Driver/*.c) \
+    $(TEST_C_FILES) \
     $(wildcard ../User/VL53L1_core/*.c) \
     $(wildcard ../User/VL53L1_platform/*.c)
 
@@ -53,11 +49,12 @@ CFLAGS = \
     -I../User/Core \
     -I../User/Config \
     -I../User/Common \
-    -I../User/APP \
     -I../User/BSP \
     -I../User/Driver \
     -I../User/Algorithm \
+    -I../User/APP \
     -I../User/Route \
+    -I../User/Test \
     -I../User/VL53L1_core \
     -I../User/VL53L1_platform \
     $(addprefix @,$(SYSCFG_OPT_FILES)) \

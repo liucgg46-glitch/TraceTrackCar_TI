@@ -11,38 +11,37 @@ extern "C" {
 /*
  * ICM-20948 姿态融合层。
  *
- * 放在 Algorithm 层而不是 Driver 层：
- *   - Driver 只负责可靠地输出加速度、角速度和磁场；
- *   - 本模块负责 Mahony 反馈、编码器航向约束、磁场异常门控和在线零偏；
- *   - APP/Route 只读取最终 Roll/Pitch/Yaw。
+ * 本模块位于 Algorithm 层：
+ *   - Driver 只负责输出可靠的加速度、角速度和磁场数据；
+ *   - 本模块负责 Mahony 反馈、磁场异常门控和在线零偏；
+ *   - APP/Route 只读取最终 Roll、Pitch 和 Yaw。
  */
 
 /* ============================== 融合参数 ================================== */
 
-/* 加速度计对 Roll/Pitch 的 Mahony 比例反馈，越大收敛越快。 */
+/* 加速度计对 Roll/Pitch 的 Mahony 比例反馈，数值越大收敛越快。 */
 #define ATTITUDE_MAHONY_ACCEL_KP                 2.0f
 
 /*
- * Yaw source policy:
- *   - Roll/Pitch keep using gyro + accelerometer Mahony correction.
- *   - Yaw uses calibrated gyro Z integration plus slow magnetometer feedback.
- *   - Encoder heading/rate never participates in attitude estimation.
+ * Yaw 数据源策略：
+ *   - Roll/Pitch 继续使用陀螺仪与加速度计 Mahony 修正；
+ *   - Yaw 使用校准后的 Z 轴角速度积分，并由磁力计缓慢修正；
+ *   - 编码器航向角和角速度不参与姿态估计。
  */
 #define ATTITUDE_SEPARATE_YAW_ENABLE              1U
 #define ATTITUDE_ENCODER_YAW_CORRECTION_ENABLE    0U
 #define ATTITUDE_MAG_YAW_CORRECTION_ENABLE        1U
 #define ATTITUDE_MAG_DISABLE_WHEN_MOTOR_ACTIVE    1U
 
-/* 磁力计只用于绕重力方向的慢速 Yaw 修正。 */
+/* 磁力计只用于绕重力方向的低增益 Yaw 修正。 */
 #define ATTITUDE_MAHONY_MAG_KP                   0.05f
 
-/* 编码器航向角/角速度对陀螺仪 Yaw 的约束。 */
-/* 合法积分周期，超出范围时使用标称周期，避免停顿后一次积分过大。 */
+/* 合法积分周期；超出范围时使用标称周期，避免停顿后一次积分过大。 */
 #define ATTITUDE_NOMINAL_DT_S                     0.00978f
 #define ATTITUDE_MIN_DT_S                         0.002f
 #define ATTITUDE_MAX_DT_S                         0.050f
 
-/* 只有加速度模长接近 1g 时，才允许它修正 Roll/Pitch。 */
+/* 只有加速度模长接近 1 g 时，才允许它修正 Roll/Pitch。 */
 #define ATTITUDE_ACCEL_CORRECTION_MIN_G           0.80f
 #define ATTITUDE_ACCEL_CORRECTION_MAX_G           1.20f
 
@@ -57,9 +56,8 @@ extern "C" {
 /* ============================== 磁场校准 ================================== */
 
 /*
- * 这些默认值可以在完成一次旋转标定后填入，之后上电即可直接启用磁力计。
- * These values are the result previously printed by this vehicle's M/N test.
- * Recalibrate after changing the IMU, mounting direction or vehicle assembly.
+ * 以下默认值来自本车此前 M/N 测试输出。
+ * 更换 IMU、安装方向或车体结构后必须重新标定。
  */
 #define ATTITUDE_MAG_CAL_DEFAULT_VALID             1U
 #define ATTITUDE_MAG_CAL_OFFSET_X_UT             -43.05f
@@ -69,7 +67,7 @@ extern "C" {
 #define ATTITUDE_MAG_CAL_SCALE_Y                   0.973f
 #define ATTITUDE_MAG_CAL_SCALE_Z                   1.022f
 
-/* min/max 标定至少覆盖足够多样本和每个轴足够大的旋转范围。 */
+/* min/max 标定至少覆盖足够样本，并保证每个轴具有足够旋转范围。 */
 #define ATTITUDE_MAG_CAL_MIN_SAMPLES             300U
 #define ATTITUDE_MAG_CAL_MIN_SPAN_UT              20.0f
 
@@ -95,7 +93,7 @@ typedef struct {
 } Attitude_Vector3f_t;
 
 /*
- * 姿态算法的纯数据输入，不暴露具体 IMU 驱动类型。
+ * 姿态算法使用纯数据输入，不暴露具体 IMU 驱动类型。
  * APP 适配层负责把传感器驱动缓存转换为该结构。
  */
 typedef struct {
@@ -109,7 +107,7 @@ typedef struct {
 } Attitude_Input_t;
 
 typedef struct {
-    float q[4];                       /* w, x, y, z */
+    float q[4];                       /* w、x、y、z */
     float roll_deg;
     float pitch_deg;
     float yaw_deg;
@@ -117,6 +115,10 @@ typedef struct {
     /* 驱动上电零偏之后，本融合层继续学习到的残余零偏。 */
     float online_gyro_bias_dps[3];
 
+    /*
+     * 编码器字段为兼容既有诊断接口而保留。
+     * 当前配置下 encoder_used 始终为 0，不参与姿态融合。
+     */
     float encoder_yaw_deg;
     float encoder_yaw_rate_dps;
     float mag_norm_uT;
@@ -143,9 +145,10 @@ typedef struct {
 void Attitude_Init(void);
 void Attitude_Reset(void);
 
-/* 每次有新输入时间戳时融合一次；重复时间戳返回 PROJECT_BUSY。 */
+/* 每次出现新输入时间戳时融合一次；重复时间戳返回 PROJECT_BUSY。 */
 Project_Status_t Attitude_Update(const Attitude_Input_t *input,
                                  uint8_t motor_active);
+
 /* 输入源离线或数据失效时由适配层调用，防止上层继续使用陈旧姿态。 */
 void Attitude_Invalidate(void);
 Project_Status_t Attitude_GetInfo(Attitude_Info_t *info);

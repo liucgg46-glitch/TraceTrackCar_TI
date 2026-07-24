@@ -1141,16 +1141,6 @@
               <FileType>5</FileType>
               <FilePath>../User/APP/task_profile_select.h</FilePath>
             </File>
-            <File>
-              <FileName>test_k210_road_comm.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>../User/APP/test_k210_road_comm.c</FilePath>
-            </File>
-            <File>
-              <FileName>test_k210_road_comm.h</FileName>
-              <FileType>5</FileType>
-              <FilePath>../User/APP/test_k210_road_comm.h</FilePath>
-            </File>
           </Files>
         </Group>
         <Group>

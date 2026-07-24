@@ -1,4 +1,5 @@
 MSPM0_SDK_INSTALL_DIR ?= D:/TI/CCS/mspm0_sdk_2_11_00_07
+BUILD_TESTS ?= 0
 
 include $(MSPM0_SDK_INSTALL_DIR)/imports.mak
 
@@ -11,17 +12,41 @@ SYSCFG_FILES := $(shell $(SYSCFG_CMD_STUB) --listGeneratedFiles --listReferenced
 SYSCFG_C_FILES = $(filter %.c,$(SYSCFG_FILES))
 SYSCFG_H_FILES = $(filter %.h,$(SYSCFG_FILES))
 
-OBJECTS = main.obj gcc_startup_mspm0g3519_gcc.obj $(patsubst %.c,%.obj,$(notdir $(SYSCFG_C_FILES)))
-NAME = empty_mspm0g3519
+TEST_C_FILES =
+ifeq ($(BUILD_TESTS),1)
+TEST_C_FILES := $(wildcard ../User/Test/*.c)
+endif
 
-CFLAGS = -I.. \
+USER_C_FILES = \
+    ../User/Core/main.c \
+    $(wildcard ../User/Common/*.c) \
+    $(wildcard ../User/BSP/*.c) \
+    $(wildcard ../User/Algorithm/*.c) \
+    $(wildcard ../User/Driver/*.c) \
+    $(wildcard ../User/APP/*.c) \
+    $(wildcard ../User/Route/*.c) \
+    $(TEST_C_FILES) \
+    $(wildcard ../User/VL53L1_core/*.c) \
+    $(wildcard ../User/VL53L1_platform/*.c)
+
+STARTUP_C_FILES = ../gcc/startup_mspm0g3519_gcc.c
+ALL_C_FILES = $(USER_C_FILES) $(SYSCFG_C_FILES) $(STARTUP_C_FILES)
+OBJECTS = $(patsubst %.c,%.obj,$(notdir $(ALL_C_FILES)))
+NAME = TraceTrackCar_TI
+
+CFLAGS = \
     -I. \
     -I../User/Core \
     -I../User/Config \
-    -I../User/APP \
+    -I../User/Common \
     -I../User/BSP \
     -I../User/Driver \
     -I../User/Algorithm \
+    -I../User/APP \
+    -I../User/Route \
+    -I../User/Test \
+    -I../User/VL53L1_core \
+    -I../User/VL53L1_platform \
     -D__MSPM0G3519__ \
     -O2 \
     "-I$(MSPM0_SDK_INSTALL_DIR)/source/third_party/CMSIS/Core/Include" \
@@ -29,31 +54,34 @@ CFLAGS = -I.. \
     -mcpu=cortex-m0plus \
     -march=armv6-m \
     -mthumb \
-    -std=c99 \
     -mfloat-abi=soft \
+    -std=c11 \
     -ffunction-sections \
     -fdata-sections \
-    -g \
-    -gstrict-dwarf \
+    -g3 \
     -Wall \
-    "-I$(GCC_ARMCOMPILER)/arm-none-eabi/include/newlib-nano" \
-    "-I$(GCC_ARMCOMPILER)/arm-none-eabi/include"
+    -Wextra
 
-LFLAGS = "-L$(MSPM0_SDK_INSTALL_DIR)/source/ti/driverlib/lib/gcc/m0p/mspm0gx51x" \
+LFLAGS = \
     -nostartfiles \
     -Wl,-T,../gcc/mspm0g3519.lds \
     "-Wl,-Map,$(NAME).map" \
-    "-l:$(MSPM0_SDK_INSTALL_DIR)/source/ti/driverlib/lib/gcc/m0p/mspm0gx51x/driverlib.a" \
+    -Wl,--gc-sections \
+    -mcpu=cortex-m0plus \
     -march=armv6-m \
     -mthumb \
-    -static \
-    -Wl,--gc-sections \
-    "-L$(GCC_ARMCOMPILER)/arm-none-eabi/lib/thumb/v6-m/nofp" \
-    -lgcc \
+    -mfloat-abi=soft \
+    "$(MSPM0_SDK_INSTALL_DIR)/source/ti/driverlib/lib/gcc/m0p/mspm0gx51x/driverlib.a" \
+    --specs=nano.specs \
+    -Wl,--start-group \
     -lc \
     -lm \
+    -lgcc \
     -lnosys \
-    --specs=nano.specs
+    -Wl,--end-group
+
+.PHONY: all clean syscfg
+
 all: $(NAME).out
 
 .INTERMEDIATE: syscfg
@@ -67,26 +95,18 @@ syscfg: ../User/Config/empty_mspm0g3519.syscfg
 define C_RULE
 $(basename $(notdir $(1))).obj: $(1) $(SYSCFG_H_FILES)
 	@ echo Building $$@
-	@ $(CC) $(CFLAGS) $$< -c -o $$@
+	@ $(CC) $(CFLAGS) -c $$< -o $$@
 endef
 
-$(foreach c_file,$(SYSCFG_C_FILES),$(eval $(call C_RULE,$(c_file))))
-
-main.obj: ../User/Core/main.c $(SYSCFG_H_FILES)
-	@ echo Building $@
-	@ $(CC) $(CFLAGS) $< -c -o $@
-
-gcc_startup_mspm0g3519_gcc.obj: ../gcc/startup_mspm0g3519_gcc.c $(SYSCFG_H_FILES)
-	@ echo Building $@
-	@ $(CC) $(CFLAGS) $< -c -o $@
+$(foreach c_file,$(ALL_C_FILES),$(eval $(call C_RULE,$(c_file))))
 
 $(NAME).out: $(OBJECTS)
-	@ echo linking $@
-	@ $(LNK)  $(OBJECTS)  $(LFLAGS) -o $(NAME).out
+	@ echo Linking $@
+	@ $(LNK) $(OBJECTS) $(LFLAGS) -o $@
 
 clean:
 	@ echo Cleaning...
-	@ $(RM) $(OBJECTS) > $(DEVNULL) 2>&1
-	@ $(RM) $(NAME).out > $(DEVNULL) 2>&1
-	@ $(RM) $(NAME).map > $(DEVNULL) 2>&1
-	@ $(RM) $(SYSCFG_FILES)> $(DEVNULL) 2>&1
+	-@ $(RM) $(OBJECTS) > $(DEVNULL) 2>&1
+	-@ $(RM) $(NAME).out > $(DEVNULL) 2>&1
+	-@ $(RM) $(NAME).map > $(DEVNULL) 2>&1
+	-@ $(RM) $(SYSCFG_FILES) > $(DEVNULL) 2>&1

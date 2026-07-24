@@ -18,11 +18,12 @@ extern "C" {
 #endif
 
 /*
- * BSP 一键初始化入口。
- * 如果某些模块暂时不用，可以不调用 BSP_InitAll()，改为在 main.c 中单独 Init。
+ * BSP 统一初始化入口。
+ * 平台级 SysConfig 初始化和各 BSP 模块初始化均在本函数内部完成，
+ * Core 层不直接依赖 TI 生成接口。
  */
-BSP_Status_t BSP_InitAll(uint32_t system_core_clock_hz);
-void         BSP_TaskAll(void);
+BSP_Status_t BSP_InitAll(void);
+void BSP_TaskAll(void);
 
 #ifdef __cplusplus
 }
