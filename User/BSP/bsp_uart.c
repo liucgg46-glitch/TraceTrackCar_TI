@@ -39,8 +39,23 @@ static uint16_t UART_Next(uint16_t value, uint16_t size)
 
 static void UART_KickTx(UART_Port_t port)
 {
-    UART_Runtime_t *rt = &s_uart_rt[port];
-    UART_Regs *inst = s_uart_cfg[port].inst;
+    UART_Runtime_t *rt;
+    UART_Regs *inst;
+    uint32_t primask;
+
+    if (port >= UART_PORT_COUNT) {
+        return;
+    }
+
+    /*
+     * 主循环、后台任务和UART发送中断都可能推进发送队列。
+     * 将tx_tail和TX中断开关放在同一临界区，避免长日志发送时
+     * 主循环与中断同时修改队列，造成乱码或发送停止。
+     */
+    primask = BSP_EnterCritical();
+
+    rt = &s_uart_rt[port];
+    inst = s_uart_cfg[port].inst;
 
     while ((rt->tx_tail != rt->tx_head) &&
            !DL_UART_Main_isTXFIFOFull(inst)) {
@@ -53,6 +68,8 @@ static void UART_KickTx(UART_Port_t port)
     } else {
         DL_UART_Main_enableInterrupt(inst, DL_UART_MAIN_INTERRUPT_TX);
     }
+
+    BSP_ExitCritical(primask);
 }
 
 void BSP_UART_Init(UART_Port_t port)

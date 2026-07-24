@@ -1240,50 +1240,85 @@ void Test_ChassisWatchdog_Update(void)
 void Test_ChassisCmd_Log(void)
 {
     Chassis_Info_t info;
-    char buf[400];
+    static char buf[256];
+    uint8_t motor_mask = 0U;
+    uint8_t encoder_mask = 0U;
     int n;
 
-    if (Chassis_GetInfo(&info) != BSP_OK) return;
+    if (Chassis_GetInfo(&info) != BSP_OK) {
+        return;
+    }
 
-    n = snprintf(buf, sizeof(buf),
-                "CHS loop=%u fault=%d mask=%02X age=%lu owner=%d mode=%d "
-                "cmd=%d/%d tgt=%d/%d "
-                "raw=%ld/%ld/%ld/%ld fb=%ld/%ld/%ld/%ld "
-                "ff=%d/%d/%d/%d "
-                "pi=%d/%d/%d/%d out=%d/%d/%d/%d\r\n",
-                (unsigned int)info.speed_loop_enabled,
-                (int)info.fault,
-                (unsigned int)info.fault_wheel_mask,
-                (unsigned long)info.command_age_ms,
-                (int)info.owner,
-                (int)info.mode,
-                info.left_target_cps,
-                info.right_target_cps,
-                info.left_applied_target_cps,
-                info.right_applied_target_cps,
-                (long)Drv_Encoder_GetWheelRawSpeedCps(WHEEL_FL),
-                (long)Drv_Encoder_GetWheelRawSpeedCps(WHEEL_FR),
-                (long)Drv_Encoder_GetWheelRawSpeedCps(WHEEL_RL),
-                (long)Drv_Encoder_GetWheelRawSpeedCps(WHEEL_RR),
-                (long)info.fl_feedback_cps,
-                (long)info.fr_feedback_cps,
-                (long)info.rl_feedback_cps,
-                (long)info.rr_feedback_cps,
-                info.fl_feedforward,
-                info.fr_feedforward,
-                info.rl_feedforward,
-                info.rr_feedforward,
-                info.fl_pid_correction,
-                info.fr_pid_correction,
-                info.rl_pid_correction,
-                info.rr_pid_correction,
-                info.fl_output,
-                info.fr_output,
-                info.rl_output,
-                info.rr_output);
+    if (Motor_IsEnabled(MOTOR_FL) != 0U) motor_mask |= 0x01U;
+    if (Motor_IsEnabled(MOTOR_FR) != 0U) motor_mask |= 0x02U;
+    if (Motor_IsEnabled(MOTOR_RL) != 0U) motor_mask |= 0x04U;
+    if (Motor_IsEnabled(MOTOR_RR) != 0U) motor_mask |= 0x08U;
 
-    if (n > 0 && n < (int)sizeof(buf)) {
-        (void)BSP_UART_WriteFrame(DEBUG_UART_PORT, (const uint8_t *)buf, (uint16_t)n);
+    if (Drv_Encoder_IsWheelEnabled(WHEEL_FL) != 0U) encoder_mask |= 0x01U;
+    if (Drv_Encoder_IsWheelEnabled(WHEEL_FR) != 0U) encoder_mask |= 0x02U;
+    if (Drv_Encoder_IsWheelEnabled(WHEEL_RL) != 0U) encoder_mask |= 0x04U;
+    if (Drv_Encoder_IsWheelEnabled(WHEEL_RR) != 0U) encoder_mask |= 0x08U;
+
+    n = snprintf(
+        buf,
+        sizeof(buf),
+        "CHS loop=%u fault=%d fault_mask=%02X motor=%02X enc=%02X "
+        "age=%lu owner=%d mode=%d cmd=%d/%d tgt=%d/%d\r\n",
+        (unsigned int)info.speed_loop_enabled,
+        (int)info.fault,
+        (unsigned int)info.fault_wheel_mask,
+        (unsigned int)motor_mask,
+        (unsigned int)encoder_mask,
+        (unsigned long)info.command_age_ms,
+        (int)info.owner,
+        (int)info.mode,
+        (int)info.left_target_cps,
+        (int)info.right_target_cps,
+        (int)info.left_applied_target_cps,
+        (int)info.right_applied_target_cps
+    );
+
+    if ((n > 0) && (n < (int)sizeof(buf))) {
+        (void)BSP_UART_WriteFrame(
+            DEBUG_UART_PORT,
+            (const uint8_t *)buf,
+            (uint16_t)n
+        );
+    }
+
+    n = snprintf(
+        buf,
+        sizeof(buf),
+        "CHS wheel raw=%ld/%ld/%ld/%ld fb=%ld/%ld/%ld/%ld "
+        "ff=%d/%d/%d/%d pi=%d/%d/%d/%d out=%d/%d/%d/%d\r\n",
+        (long)Drv_Encoder_GetWheelRawSpeedCps(WHEEL_FL),
+        (long)Drv_Encoder_GetWheelRawSpeedCps(WHEEL_FR),
+        (long)Drv_Encoder_GetWheelRawSpeedCps(WHEEL_RL),
+        (long)Drv_Encoder_GetWheelRawSpeedCps(WHEEL_RR),
+        (long)info.fl_feedback_cps,
+        (long)info.fr_feedback_cps,
+        (long)info.rl_feedback_cps,
+        (long)info.rr_feedback_cps,
+        (int)info.fl_feedforward,
+        (int)info.fr_feedforward,
+        (int)info.rl_feedforward,
+        (int)info.rr_feedforward,
+        (int)info.fl_pid_correction,
+        (int)info.fr_pid_correction,
+        (int)info.rl_pid_correction,
+        (int)info.rr_pid_correction,
+        (int)info.fl_output,
+        (int)info.fr_output,
+        (int)info.rl_output,
+        (int)info.rr_output
+    );
+
+    if ((n > 0) && (n < (int)sizeof(buf))) {
+        (void)BSP_UART_WriteFrame(
+            DEBUG_UART_PORT,
+            (const uint8_t *)buf,
+            (uint16_t)n
+        );
     }
 }
 
