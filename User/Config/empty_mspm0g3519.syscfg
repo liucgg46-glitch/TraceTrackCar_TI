@@ -44,7 +44,7 @@ Board.peripheral.swdioPin.$assign = "PA19";
 
 GPIOA_BOARD.$name = "GPIO_BOARD_OUTPUTS";
 GPIOA_BOARD.port  = "PORTA";
-GPIOA_BOARD.associatedPins.create(9);
+GPIOA_BOARD.associatedPins.create(10);
 
 GPIOA_BOARD.associatedPins[0].$name        = "LED1";
 GPIOA_BOARD.associatedPins[0].assignedPin  = "14";
@@ -91,131 +91,131 @@ GPIOA_BOARD.associatedPins[8].direction        = "INPUT";
 GPIOA_BOARD.associatedPins[8].internalResistor = "PULL_UP";
 GPIOA_BOARD.associatedPins[8].pin.$assign      = "PA8";
 
+GPIOA_BOARD.associatedPins[9].$name        = "ICM20948_CS";
+GPIOA_BOARD.associatedPins[9].assignedPin  = "9";
+GPIOA_BOARD.associatedPins[9].initialValue = "SET";
+GPIOA_BOARD.associatedPins[9].pin.$assign  = "PA9";
+
 GPIOB_BOARD.$name = "GPIO_BOARD_IO";
 GPIOB_BOARD.port  = "PORTB";
-GPIOB_BOARD.associatedPins.create(20);
+GPIOB_BOARD.associatedPins.create(19);
 
-GPIOB_BOARD.associatedPins[0].$name        = "ICM20948_CS";
-GPIOB_BOARD.associatedPins[0].assignedPin  = "12";
-GPIOB_BOARD.associatedPins[0].initialValue = "SET";
-GPIOB_BOARD.associatedPins[0].pin.$assign  = "PB12";
+GPIOB_BOARD.associatedPins[0].$name       = "ICM20948_INT";
+GPIOB_BOARD.associatedPins[0].assignedPin = "21";
+GPIOB_BOARD.associatedPins[0].direction   = "INPUT";
+GPIOB_BOARD.associatedPins[0].interruptEn = true;
+GPIOB_BOARD.associatedPins[0].polarity    = "RISE_FALL";
+GPIOB_BOARD.associatedPins[0].pin.$assign = "PB21";
 
-GPIOB_BOARD.associatedPins[1].$name       = "ICM20948_INT";
-GPIOB_BOARD.associatedPins[1].assignedPin = "21";
-GPIOB_BOARD.associatedPins[1].direction   = "INPUT";
-GPIOB_BOARD.associatedPins[1].interruptEn = true;
-GPIOB_BOARD.associatedPins[1].polarity    = "RISE_FALL";
-GPIOB_BOARD.associatedPins[1].pin.$assign = "PB21";
+GPIOB_BOARD.associatedPins[1].$name            = "USER_KEY";
+GPIOB_BOARD.associatedPins[1].assignedPin      = "31";
+GPIOB_BOARD.associatedPins[1].direction        = "INPUT";
+GPIOB_BOARD.associatedPins[1].internalResistor = "PULL_UP";
+GPIOB_BOARD.associatedPins[1].pin.$assign      = "PB31";
 
-GPIOB_BOARD.associatedPins[2].$name            = "USER_KEY";
-GPIOB_BOARD.associatedPins[2].assignedPin      = "31";
-GPIOB_BOARD.associatedPins[2].direction        = "INPUT";
-GPIOB_BOARD.associatedPins[2].internalResistor = "PULL_UP";
-GPIOB_BOARD.associatedPins[2].pin.$assign      = "PB31";
+GPIOB_BOARD.associatedPins[2].$name        = "MOTOR_FL_IN1";
+GPIOB_BOARD.associatedPins[2].assignedPin  = "6";
+GPIOB_BOARD.associatedPins[2].initialValue = "CLEARED";
+GPIOB_BOARD.associatedPins[2].pin.$assign  = "PB6";
 
-GPIOB_BOARD.associatedPins[3].$name        = "MOTOR_FL_IN1";
-GPIOB_BOARD.associatedPins[3].assignedPin  = "6";
+GPIOB_BOARD.associatedPins[3].$name        = "MOTOR_FL_IN2";
+GPIOB_BOARD.associatedPins[3].assignedPin  = "7";
 GPIOB_BOARD.associatedPins[3].initialValue = "CLEARED";
-GPIOB_BOARD.associatedPins[3].pin.$assign  = "PB6";
+GPIOB_BOARD.associatedPins[3].pin.$assign  = "PB7";
 
-GPIOB_BOARD.associatedPins[4].$name        = "MOTOR_FL_IN2";
-GPIOB_BOARD.associatedPins[4].assignedPin  = "7";
+GPIOB_BOARD.associatedPins[4].$name        = "MOTOR_FR_IN1";
+GPIOB_BOARD.associatedPins[4].assignedPin  = "8";
 GPIOB_BOARD.associatedPins[4].initialValue = "CLEARED";
-GPIOB_BOARD.associatedPins[4].pin.$assign  = "PB7";
+GPIOB_BOARD.associatedPins[4].pin.$assign  = "PB8";
 
-GPIOB_BOARD.associatedPins[5].$name        = "MOTOR_FR_IN1";
-GPIOB_BOARD.associatedPins[5].assignedPin  = "8";
+GPIOB_BOARD.associatedPins[5].$name        = "MOTOR_FR_IN2";
+GPIOB_BOARD.associatedPins[5].assignedPin  = "9";
 GPIOB_BOARD.associatedPins[5].initialValue = "CLEARED";
-GPIOB_BOARD.associatedPins[5].pin.$assign  = "PB8";
+GPIOB_BOARD.associatedPins[5].pin.$assign  = "PB9";
 
-GPIOB_BOARD.associatedPins[6].$name        = "MOTOR_FR_IN2";
-GPIOB_BOARD.associatedPins[6].assignedPin  = "9";
+GPIOB_BOARD.associatedPins[6].$name        = "MOTOR_RL_IN1";
+GPIOB_BOARD.associatedPins[6].assignedPin  = "20";
 GPIOB_BOARD.associatedPins[6].initialValue = "CLEARED";
-GPIOB_BOARD.associatedPins[6].pin.$assign  = "PB9";
+GPIOB_BOARD.associatedPins[6].pin.$assign  = "PB20";
 
-GPIOB_BOARD.associatedPins[7].$name        = "MOTOR_RL_IN1";
-GPIOB_BOARD.associatedPins[7].assignedPin  = "20";
+GPIOB_BOARD.associatedPins[7].$name        = "MOTOR_RL_IN2";
+GPIOB_BOARD.associatedPins[7].assignedPin  = "24";
 GPIOB_BOARD.associatedPins[7].initialValue = "CLEARED";
-GPIOB_BOARD.associatedPins[7].pin.$assign  = "PB20";
+GPIOB_BOARD.associatedPins[7].pin.$assign  = "PB24";
 
-GPIOB_BOARD.associatedPins[8].$name        = "MOTOR_RL_IN2";
-GPIOB_BOARD.associatedPins[8].assignedPin  = "24";
+GPIOB_BOARD.associatedPins[8].$name        = "MOTOR_RR_IN1";
+GPIOB_BOARD.associatedPins[8].assignedPin  = "25";
 GPIOB_BOARD.associatedPins[8].initialValue = "CLEARED";
-GPIOB_BOARD.associatedPins[8].pin.$assign  = "PB24";
+GPIOB_BOARD.associatedPins[8].pin.$assign  = "PB25";
 
-GPIOB_BOARD.associatedPins[9].$name        = "MOTOR_RR_IN1";
-GPIOB_BOARD.associatedPins[9].assignedPin  = "25";
+GPIOB_BOARD.associatedPins[9].$name        = "MOTOR_RR_IN2";
+GPIOB_BOARD.associatedPins[9].assignedPin  = "27";
 GPIOB_BOARD.associatedPins[9].initialValue = "CLEARED";
-GPIOB_BOARD.associatedPins[9].pin.$assign  = "PB25";
+GPIOB_BOARD.associatedPins[9].pin.$assign  = "PB27";
 
-GPIOB_BOARD.associatedPins[10].$name        = "MOTOR_RR_IN2";
-GPIOB_BOARD.associatedPins[10].assignedPin  = "27";
-GPIOB_BOARD.associatedPins[10].initialValue = "CLEARED";
-GPIOB_BOARD.associatedPins[10].pin.$assign  = "PB27";
+GPIOB_BOARD.associatedPins[10].$name            = "ENCODER_RL_A";
+GPIOB_BOARD.associatedPins[10].assignedPin      = "17";
+GPIOB_BOARD.associatedPins[10].direction        = "INPUT";
+GPIOB_BOARD.associatedPins[10].internalResistor = "PULL_UP";
+GPIOB_BOARD.associatedPins[10].inputFilter      = "3_CYCLES";
+GPIOB_BOARD.associatedPins[10].interruptEn      = true;
+GPIOB_BOARD.associatedPins[10].polarity         = "RISE_FALL";
+GPIOB_BOARD.associatedPins[10].pin.$assign      = "PB17";
 
-GPIOB_BOARD.associatedPins[11].$name            = "ENCODER_RL_A";
-GPIOB_BOARD.associatedPins[11].assignedPin      = "17";
+GPIOB_BOARD.associatedPins[11].$name            = "ENCODER_RL_B";
+GPIOB_BOARD.associatedPins[11].assignedPin      = "18";
 GPIOB_BOARD.associatedPins[11].direction        = "INPUT";
 GPIOB_BOARD.associatedPins[11].internalResistor = "PULL_UP";
 GPIOB_BOARD.associatedPins[11].inputFilter      = "3_CYCLES";
 GPIOB_BOARD.associatedPins[11].interruptEn      = true;
 GPIOB_BOARD.associatedPins[11].polarity         = "RISE_FALL";
-GPIOB_BOARD.associatedPins[11].pin.$assign      = "PB17";
+GPIOB_BOARD.associatedPins[11].pin.$assign      = "PB18";
 
-GPIOB_BOARD.associatedPins[12].$name            = "ENCODER_RL_B";
-GPIOB_BOARD.associatedPins[12].assignedPin      = "18";
+GPIOB_BOARD.associatedPins[12].$name            = "ENCODER_RR_A";
+GPIOB_BOARD.associatedPins[12].assignedPin      = "19";
 GPIOB_BOARD.associatedPins[12].direction        = "INPUT";
 GPIOB_BOARD.associatedPins[12].internalResistor = "PULL_UP";
 GPIOB_BOARD.associatedPins[12].inputFilter      = "3_CYCLES";
 GPIOB_BOARD.associatedPins[12].interruptEn      = true;
 GPIOB_BOARD.associatedPins[12].polarity         = "RISE_FALL";
-GPIOB_BOARD.associatedPins[12].pin.$assign      = "PB18";
+GPIOB_BOARD.associatedPins[12].pin.$assign      = "PB19";
 
-GPIOB_BOARD.associatedPins[13].$name            = "ENCODER_RR_A";
-GPIOB_BOARD.associatedPins[13].assignedPin      = "19";
+GPIOB_BOARD.associatedPins[13].$name            = "ENCODER_RR_B";
+GPIOB_BOARD.associatedPins[13].assignedPin      = "22";
 GPIOB_BOARD.associatedPins[13].direction        = "INPUT";
 GPIOB_BOARD.associatedPins[13].internalResistor = "PULL_UP";
 GPIOB_BOARD.associatedPins[13].inputFilter      = "3_CYCLES";
 GPIOB_BOARD.associatedPins[13].interruptEn      = true;
 GPIOB_BOARD.associatedPins[13].polarity         = "RISE_FALL";
-GPIOB_BOARD.associatedPins[13].pin.$assign      = "PB19";
+GPIOB_BOARD.associatedPins[13].pin.$assign      = "PB22";
 
-GPIOB_BOARD.associatedPins[14].$name            = "ENCODER_RR_B";
-GPIOB_BOARD.associatedPins[14].assignedPin      = "22";
-GPIOB_BOARD.associatedPins[14].direction        = "INPUT";
-GPIOB_BOARD.associatedPins[14].internalResistor = "PULL_UP";
-GPIOB_BOARD.associatedPins[14].inputFilter      = "3_CYCLES";
-GPIOB_BOARD.associatedPins[14].interruptEn      = true;
-GPIOB_BOARD.associatedPins[14].polarity         = "RISE_FALL";
-GPIOB_BOARD.associatedPins[14].pin.$assign      = "PB22";
+GPIOB_BOARD.associatedPins[14].$name        = "LCD_RESET";
+GPIOB_BOARD.associatedPins[14].assignedPin  = "23";
+GPIOB_BOARD.associatedPins[14].initialValue = "SET";
+GPIOB_BOARD.associatedPins[14].pin.$assign  = "PB23";
 
-GPIOB_BOARD.associatedPins[15].$name        = "LCD_RESET";
-GPIOB_BOARD.associatedPins[15].assignedPin  = "23";
-GPIOB_BOARD.associatedPins[15].initialValue = "SET";
-GPIOB_BOARD.associatedPins[15].pin.$assign  = "PB23";
-
-GPIOB_BOARD.associatedPins[16].$name            = "E220_AUX";
-GPIOB_BOARD.associatedPins[16].assignedPin      = "28";
+GPIOB_BOARD.associatedPins[15].$name            = "E220_AUX";
+GPIOB_BOARD.associatedPins[15].assignedPin      = "28";
+GPIOB_BOARD.associatedPins[15].direction        = "INPUT";
+GPIOB_BOARD.associatedPins[15].internalResistor = "PULL_UP";
+GPIOB_BOARD.associatedPins[15].pin.$assign      = "PB28";
+GPIOB_BOARD.associatedPins[16].$name            = "KEY1";
+GPIOB_BOARD.associatedPins[16].assignedPin      = "0";
 GPIOB_BOARD.associatedPins[16].direction        = "INPUT";
 GPIOB_BOARD.associatedPins[16].internalResistor = "PULL_UP";
-GPIOB_BOARD.associatedPins[16].pin.$assign      = "PB28";
-GPIOB_BOARD.associatedPins[17].$name            = "KEY1";
-GPIOB_BOARD.associatedPins[17].assignedPin      = "0";
+GPIOB_BOARD.associatedPins[16].pin.$assign      = "PB0";
+
+GPIOB_BOARD.associatedPins[17].$name            = "KEY2";
+GPIOB_BOARD.associatedPins[17].assignedPin      = "1";
 GPIOB_BOARD.associatedPins[17].direction        = "INPUT";
 GPIOB_BOARD.associatedPins[17].internalResistor = "PULL_UP";
-GPIOB_BOARD.associatedPins[17].pin.$assign      = "PB0";
+GPIOB_BOARD.associatedPins[17].pin.$assign      = "PB1";
 
-GPIOB_BOARD.associatedPins[18].$name            = "KEY2";
-GPIOB_BOARD.associatedPins[18].assignedPin      = "1";
+GPIOB_BOARD.associatedPins[18].$name            = "KEY3";
+GPIOB_BOARD.associatedPins[18].assignedPin      = "13";
 GPIOB_BOARD.associatedPins[18].direction        = "INPUT";
 GPIOB_BOARD.associatedPins[18].internalResistor = "PULL_UP";
-GPIOB_BOARD.associatedPins[18].pin.$assign      = "PB1";
-
-GPIOB_BOARD.associatedPins[19].$name            = "KEY3";
-GPIOB_BOARD.associatedPins[19].assignedPin      = "13";
-GPIOB_BOARD.associatedPins[19].direction        = "INPUT";
-GPIOB_BOARD.associatedPins[19].internalResistor = "PULL_UP";
-GPIOB_BOARD.associatedPins[19].pin.$assign      = "PB13";
+GPIOB_BOARD.associatedPins[18].pin.$assign      = "PB13";
 
 GPIOC_BOARD.$name = "GPIO_DISPLAY_GRAY";
 GPIOC_BOARD.port  = "PORTC";

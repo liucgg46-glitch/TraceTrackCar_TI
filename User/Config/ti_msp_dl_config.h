@@ -326,12 +326,12 @@ extern "C" {
 /* Defines for KEY4: GPIOA.8 with pinCMx 19 on package pin 22 */
 #define GPIO_BOARD_OUTPUTS_KEY4_PIN                              (DL_GPIO_PIN_8)
 #define GPIO_BOARD_OUTPUTS_KEY4_IOMUX                            (IOMUX_PINCM19)
+/* Defines for ICM20948_CS: GPIOA.9 with pinCMx 20 on package pin 23 */
+#define GPIO_BOARD_OUTPUTS_ICM20948_CS_PIN                       (DL_GPIO_PIN_9)
+#define GPIO_BOARD_OUTPUTS_ICM20948_CS_IOMUX                     (IOMUX_PINCM20)
 /* Port definition for Pin Group GPIO_BOARD_IO */
 #define GPIO_BOARD_IO_PORT                                               (GPIOB)
 
-/* Defines for ICM20948_CS: GPIOB.12 with pinCMx 29 on package pin 36 */
-#define GPIO_BOARD_IO_ICM20948_CS_PIN                           (DL_GPIO_PIN_12)
-#define GPIO_BOARD_IO_ICM20948_CS_IOMUX                          (IOMUX_PINCM29)
 /* Defines for ICM20948_INT: GPIOB.21 with pinCMx 49 on package pin 68 */
 // pins affected by this interrupt request:["ICM20948_INT","ENCODER_RL_A","ENCODER_RL_B","ENCODER_RR_A","ENCODER_RR_B"]
 #define GPIO_BOARD_IO_INT_IRQN                                  (GPIOB_INT_IRQn)

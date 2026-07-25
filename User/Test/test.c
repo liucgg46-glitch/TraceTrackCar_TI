@@ -902,29 +902,73 @@ void Test_E220_Link_Update(void)
 }
 
 /* 扫描 I2C0 总线上的 7 位从设备地址。 */
-void Test_I2C_Scan(void)
+#define TEST_I2C_SCAN_REPEAT_FIX_V2          1U
+#define TEST_I2C_SCAN_PERIOD_MS              1000U
+#define TEST_I2C_SCAN_RETRY_MS               20U
+#define TEST_I2C_SCAN_WAIT_NOTICE_MS         500U
+
+static uint8_t s_test_i2c_scan_pending = 0U;
+static uint8_t s_test_i2c_scan_wait_notice_sent = 0U;
+static uint32_t s_test_i2c_scan_request_ms = 0U;
+static uint32_t s_test_i2c_scan_last_try_ms = 0U;
+
+static void Test_I2C_ScanSendText(const char *text)
 {
-    static uint8_t scan_finished = 0U;
-    static uint32_t last_try_ms = 0U;
+    uint16_t length = 0U;
+
+    if (text == 0) {
+        return;
+    }
+
+    while ((text[length] != '\0') && (length < 160U)) {
+        length++;
+    }
+
+    if (length != 0U) {
+        (void)BSP_UART_WriteFrame(
+            DEBUG_UART_PORT,
+            (const uint8_t *)text,
+            length);
+    }
+}
+
+static void Test_I2C_ScanRequest(uint8_t print_request)
+{
+    if (s_test_i2c_scan_pending == 0U) {
+        s_test_i2c_scan_pending = 1U;
+        s_test_i2c_scan_wait_notice_sent = 0U;
+        s_test_i2c_scan_request_ms = BSP_GET_TICK();
+        s_test_i2c_scan_last_try_ms =
+            s_test_i2c_scan_request_ms - TEST_I2C_SCAN_RETRY_MS;
+
+        if (print_request != 0U) {
+            Test_I2C_ScanSendText("I2C scan queued\r\n");
+        }
+    } else if (print_request != 0U) {
+        Test_I2C_ScanSendText("I2C scan already queued\r\n");
+    }
+}
+
+static void Test_I2C_ScanProcess(void)
+{
     uint8_t addr[16];
     uint8_t found = 0U;
     uint8_t i;
+    uint32_t now_ms;
     BSP_Status_t status;
     char buf[160];
     int n;
 
-    if (scan_finished != 0U) {
+    if (s_test_i2c_scan_pending == 0U) {
         return;
     }
 
-    /*
-     * OLED和MCU灰度均使用异步I2C。总线忙时不报错，
-     * 每100 ms重试，直到取得一次完整扫描结果。
-     */
-    if ((uint32_t)(BSP_GET_TICK() - last_try_ms) < 100U) {
+    now_ms = BSP_GET_TICK();
+    if ((uint32_t)(now_ms - s_test_i2c_scan_last_try_ms) <
+        TEST_I2C_SCAN_RETRY_MS) {
         return;
     }
-    last_try_ms = BSP_GET_TICK();
+    s_test_i2c_scan_last_try_ms = now_ms;
 
     status = BSP_I2C_ScanBus(
         I2C_BUS1,
@@ -933,6 +977,13 @@ void Test_I2C_Scan(void)
         &found);
 
     if (status == BSP_BUSY) {
+        if ((s_test_i2c_scan_wait_notice_sent == 0U) &&
+            ((uint32_t)(now_ms - s_test_i2c_scan_request_ms) >=
+             TEST_I2C_SCAN_WAIT_NOTICE_MS)) {
+            Test_I2C_ScanSendText(
+                "I2C scan waiting: bus busy\r\n");
+            s_test_i2c_scan_wait_notice_sent = 1U;
+        }
         return;
     }
 
@@ -942,12 +993,15 @@ void Test_I2C_Scan(void)
             sizeof(buf),
             "I2C scan error status=%u\r\n",
             (unsigned int)status);
+
         if ((n > 0) && (n < (int)sizeof(buf))) {
             (void)BSP_UART_WriteFrame(
                 DEBUG_UART_PORT,
                 (const uint8_t *)buf,
                 (uint16_t)n);
         }
+
+        s_test_i2c_scan_pending = 0U;
         return;
     }
 
@@ -992,8 +1046,32 @@ void Test_I2C_Scan(void)
             DEBUG_UART_PORT,
             (const uint8_t *)buf,
             (uint16_t)n);
-        scan_finished = 1U;
     }
+
+    s_test_i2c_scan_pending = 0U;
+}
+
+/*
+ * 周期注册模式：
+ *   { Test_I2C_Scan, 10U, 0U },
+ *
+ * 函数内部每1秒请求一次扫描。总线正被OLED、MCU灰度或测距设备
+ * 使用时保持请求，等待总线空闲后自动完成，不会静默丢失。
+ */
+void Test_I2C_Scan(void)
+{
+    static uint8_t periodic_started = 0U;
+    static uint32_t next_scan_ms = 0U;
+    uint32_t now_ms = BSP_GET_TICK();
+
+    if ((periodic_started == 0U) ||
+        ((int32_t)(now_ms - next_scan_ms) >= 0)) {
+        Test_I2C_ScanRequest(0U);
+        next_scan_ms = now_ms + TEST_I2C_SCAN_PERIOD_MS;
+        periodic_started = 1U;
+    }
+
+    Test_I2C_ScanProcess();
 }
 
 void Test_DriveProfile_Update(void)
@@ -1553,6 +1631,7 @@ void Test_MotionCmd_Log(void)
  *   t：根据白底和黑线记录生成八路阈值；
  *   d：恢复默认统一阈值 LINE_DETECT_DEFAULT_THRESHOLD；
  *   p：立即打印 raw、threshold、mask、error、type 和输出。
+ *   k 或 K：请求一次 I2C 扫描；总线忙时自动等待重试。
  *
  * 推荐标定流程：
  *   1. 八路传感器全部对准白底，发送 w；
@@ -1704,47 +1783,89 @@ void Test_LineCmd_Update(void)
     uint16_t raw[LINE_DETECT_SENSOR_NUM];
     BSP_Status_t status;
 
+    /*
+     * k/K触发的扫描可能因为OLED或MCU灰度正在通信而暂时等待。
+     * 即使本周期没有新串口字符，也必须持续推进已排队的扫描。
+     */
+    Test_I2C_ScanProcess();
+
     while (BSP_UART_GetChar(DEBUG_UART_PORT, &ch)) {
         if ((ch == '1') || (ch == 'l') || (ch == 'L')) {
             status = LineFollow_Start();
             if (status == BSP_OK) {
-                (void)BSP_UART_WriteFrame(DEBUG_UART_PORT,
-                                          (const uint8_t *)"line follow RUN\r\n",
-                                          (uint16_t)(sizeof("line follow RUN\r\n") - 1U));
+                (void)BSP_UART_WriteFrame(
+                    DEBUG_UART_PORT,
+                    (const uint8_t *)"line follow RUN\r\n",
+                    (uint16_t)(sizeof("line follow RUN\r\n") - 1U));
             } else if (status == BSP_ERROR) {
-                (void)BSP_UART_WriteFrame(DEBUG_UART_PORT,
-                                          (const uint8_t *)"line follow rejected: gray sensor offline\r\n",
-                                          (uint16_t)(sizeof("line follow rejected: gray sensor offline\r\n") - 1U));
+                (void)BSP_UART_WriteFrame(
+                    DEBUG_UART_PORT,
+                    (const uint8_t *)
+                        "line follow rejected: gray sensor offline\r\n",
+                    (uint16_t)(
+                        sizeof(
+                            "line follow rejected: gray sensor offline\r\n") -
+                        1U));
             } else {
-                (void)BSP_UART_WriteFrame(DEBUG_UART_PORT,
-                                          (const uint8_t *)"line follow rejected: control busy\r\n",
-                                          (uint16_t)(sizeof("line follow rejected: control busy\r\n") - 1U));
+                (void)BSP_UART_WriteFrame(
+                    DEBUG_UART_PORT,
+                    (const uint8_t *)
+                        "line follow rejected: control busy\r\n",
+                    (uint16_t)(
+                        sizeof("line follow rejected: control busy\r\n") -
+                        1U));
             }
-        } else if (ch == '0' || ch == 'x') {
+        } else if ((ch == '0') || (ch == 'x')) {
             LineFollow_Stop();
-            (void)BSP_UART_WriteFrame(DEBUG_UART_PORT, (const uint8_t *)"line follow stop\r\n", (uint16_t)(sizeof("line follow stop\r\n") - 1U));
+            (void)BSP_UART_WriteFrame(
+                DEBUG_UART_PORT,
+                (const uint8_t *)"line follow stop\r\n",
+                (uint16_t)(sizeof("line follow stop\r\n") - 1U));
         } else if (ch == 'w') {
-            (void)Drv_GraySensor_GetFiltArray(raw, LINE_DETECT_SENSOR_NUM);
+            (void)Drv_GraySensor_GetFiltArray(
+                raw,
+                LINE_DETECT_SENSOR_NUM);
             LineDetect_CaptureWhite(raw);
-            (void)BSP_UART_WriteFrame(DEBUG_UART_PORT, (const uint8_t *)"capture white ok\r\n", (uint16_t)(sizeof("capture white ok\r\n") - 1U));
+            (void)BSP_UART_WriteFrame(
+                DEBUG_UART_PORT,
+                (const uint8_t *)"capture white ok\r\n",
+                (uint16_t)(sizeof("capture white ok\r\n") - 1U));
         } else if (ch == 'b') {
-            (void)Drv_GraySensor_GetFiltArray(raw, LINE_DETECT_SENSOR_NUM);
+            (void)Drv_GraySensor_GetFiltArray(
+                raw,
+                LINE_DETECT_SENSOR_NUM);
             LineDetect_CaptureBlack(raw);
-            (void)BSP_UART_WriteFrame(DEBUG_UART_PORT, (const uint8_t *)"capture black ok\r\n", (uint16_t)(sizeof("capture black ok\r\n") - 1U));
+            (void)BSP_UART_WriteFrame(
+                DEBUG_UART_PORT,
+                (const uint8_t *)"capture black ok\r\n",
+                (uint16_t)(sizeof("capture black ok\r\n") - 1U));
         } else if (ch == 't') {
             LineDetect_MakeThresholdFromWhiteBlack();
-            (void)BSP_UART_WriteFrame(DEBUG_UART_PORT, (const uint8_t *)"make threshold ok\r\n", (uint16_t)(sizeof("make threshold ok\r\n") - 1U));
+            (void)BSP_UART_WriteFrame(
+                DEBUG_UART_PORT,
+                (const uint8_t *)"make threshold ok\r\n",
+                (uint16_t)(sizeof("make threshold ok\r\n") - 1U));
             Test_Line_PrintThreshold();
         } else if (ch == 'd') {
-            LineDetect_SetAllThreshold(LINE_DETECT_DEFAULT_THRESHOLD);
-            (void)BSP_UART_WriteFrame(DEBUG_UART_PORT, (const uint8_t *)"default threshold\r\n", (uint16_t)(sizeof("default threshold\r\n") - 1U));
+            LineDetect_SetAllThreshold(
+                LINE_DETECT_DEFAULT_THRESHOLD);
+            (void)BSP_UART_WriteFrame(
+                DEBUG_UART_PORT,
+                (const uint8_t *)"default threshold\r\n",
+                (uint16_t)(sizeof("default threshold\r\n") - 1U));
             Test_Line_PrintThreshold();
         } else if (ch == 'p') {
             Test_Line_Print();
-        } else if (ch == 'k') {
-            Test_I2C_Scan();
+        } else if ((ch == 'k') || (ch == 'K')) {
+            Test_I2C_ScanRequest(1U);
         }
     }
+
+    /*
+     * 收到k/K且总线当前空闲时，本周期即可完成；
+     * 总线忙时请求保留到后续10 ms任务周期继续尝试。
+     */
+    Test_I2C_ScanProcess();
 }
 
 void Test_LineCmd_Log(void)

@@ -15,16 +15,16 @@ extern "C" {
  * ICM-20948 九轴 IMU 驱动配置区
  * ============================================================================
  *
- * 硬件接口：
- *   SPI2_SCK  -> PB13
- *   SPI2_MISO -> PB14（ICM-20948 SDO）
- *   SPI2_MOSI -> PB15（ICM-20948 SDI）
- *   CS        -> PE5（由 BSP_GPIO_ICM20948_CS 管理）
+ * 硬件接口（以ICM20948模块丝印为主）：
+ *   SCL / SCLK  -> PB16
+ *   SDA / MOSI  -> PB15
+ *   AD0 / MISO  -> PB14
+ *   NCS / CS    -> PA9（由 BSP_GPIO_ICM20948_CS 软件控制）
+ *   INT         -> PB21
  *
- * SPI2 与 TFT LCD 共用 SCK/MISO/MOSI，但两者使用独立 CS。驱动在每次访问前
- * 检查 BSP_SPI_IsBusy()，LCD 正在 DMA 传输时本轮自动跳过，不会抢占总线。
- *
- * 本驱动提供：
+ * ICM20948使用独立SPI1。NCS空闲时必须保持高电平，每次寄存器事务
+ * 开始前拉低、结束后拉高，不能永久接地。
+ * * 本驱动提供：
  *   - 三轴加速度、三轴角速度、三轴磁场和芯片温度；
  *   - 原始 ADC 数据、物理量数据、滤波数据；
  *   - 芯片硬件 DLPF；
@@ -39,7 +39,7 @@ extern "C" {
 
 /* ============================== 总开关与硬件 ============================== */
 #define DRV_ICM20948_ENABLE                    1U
-/* 仅使用用户外接 ICM20948：PB16 CLK / PB15 MOSI / PB14 MISO / PB12 CS。 */
+/* 外接ICM20948：PB16 SCLK / PB15 MOSI / PB14 MISO / PA9 CS / PB21 INT。 */
 #define DRV_ICM20948_SPI_BUS                   SPI_BUS2
 #define DRV_ICM20948_CS_GPIO                   BSP_GPIO_ICM20948_CS
 
