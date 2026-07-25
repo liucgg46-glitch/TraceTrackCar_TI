@@ -39,13 +39,7 @@ extern "C" {
 Task_t task_list[] = {                                                              \
     { AppDiagnostics_HeartbeatUpdate, 10U, 0U }, /* 运行心跳 */         \
     { AppTask_BSP_Background, 1U, 0U }, /* UART、总线和异步驱动后台 */        \
-    { Key_Update, 10U, 0U }, /* 按键扫描 */                             \
-    { Sensor_Update, 1U, 0U }, /* IMU 和传感器状态机 */                    \
-    { Encoder_Update, 10U, 0U }, /* 里程和速度反馈 */                      \
-    { Test_MotionCmd_Update, 10U, 0U }, /* 五按键动作命令 */               \
-    { Motion_Update, 10U, 0U }, /* 动作状态机 */                         \
-    { Chassis_Update, 10U, 0U }, /* 底盘闭环 */                         \
-    { Test_MotionCmd_Log, 200U, 0U }, /* 动作日志 */                    \
+    { Test_OLED_Ascii_Update, 20U, 0U }, /* OLED 测试页面 */            \
 };                                                       \
 const uint8_t TASK_NUM =                                 \
     (uint8_t)(sizeof(task_list) / sizeof(task_list[0]))

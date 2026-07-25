@@ -38,6 +38,27 @@ typedef struct {
     uint16_t error_sr1;
     uint16_t error_sr2;
     uint32_t error_count;
+
+    /* 写后读组合事务的诊断快照和累计计数。 */
+    uint8_t phase;
+    uint8_t repeat_read_pending;
+    uint8_t last_event;
+    uint8_t last_iidx;
+    uint8_t tx_first;
+    uint8_t rx_first;
+    uint16_t current_status;
+    uint16_t line_state;
+    uint16_t status_tx_done;
+    uint16_t status_repeat_wait;
+    uint16_t status_repeat_before;
+    uint16_t status_repeat_after;
+    uint16_t status_rx_done;
+    uint32_t tx_done_count;
+    uint32_t repeat_wait_count;
+    uint32_t repeat_start_count;
+    uint32_t rx_done_count;
+    uint32_t nack_count;
+    uint32_t timeout_count;
 } BSP_I2C_Debug_t;
 
 void BSP_I2C_Init(I2C_Bus_t bus);

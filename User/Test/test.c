@@ -1746,6 +1746,52 @@ static void Test_Line_Print(void)
     }
 
     n = sprintf(buf,
+                "I2CD ph=%u rpt=%u evt=%u iidx=%u "
+                "now=0x%04X line=0x%02X\r\n",
+                (unsigned int)i2c.phase,
+                (unsigned int)i2c.repeat_read_pending,
+                (unsigned int)i2c.last_event,
+                (unsigned int)i2c.last_iidx,
+                (unsigned int)i2c.current_status,
+                (unsigned int)i2c.line_state);
+
+    if ((n > 0) && (n < (int)sizeof(buf))) {
+        (void)BSP_UART_WriteFrame(DEBUG_UART_PORT,
+                                  (const uint8_t *)buf,
+                                  (uint16_t)n);
+    }
+
+    n = sprintf(buf,
+                "I2CC txd=%lu wait=%lu rs=%lu rxd=%lu "
+                "nack=%lu to=%lu\r\n",
+                (unsigned long)i2c.tx_done_count,
+                (unsigned long)i2c.repeat_wait_count,
+                (unsigned long)i2c.repeat_start_count,
+                (unsigned long)i2c.rx_done_count,
+                (unsigned long)i2c.nack_count,
+                (unsigned long)i2c.timeout_count);
+
+    if ((n > 0) && (n < (int)sizeof(buf))) {
+        (void)BSP_UART_WriteFrame(DEBUG_UART_PORT,
+                                  (const uint8_t *)buf,
+                                  (uint16_t)n);
+    }
+
+    n = sprintf(buf,
+                "I2CS txd=0x%04X wait=0x%04X "
+                "rb=0x%04X ra=0x%04X rxd=0x%04X\r\n",
+                (unsigned int)i2c.status_tx_done,
+                (unsigned int)i2c.status_repeat_wait,
+                (unsigned int)i2c.status_repeat_before,
+                (unsigned int)i2c.status_repeat_after,
+                (unsigned int)i2c.status_rx_done);
+
+    if ((n > 0) && (n < (int)sizeof(buf))) {
+        (void)BSP_UART_WriteFrame(DEBUG_UART_PORT,
+                                  (const uint8_t *)buf,
+                                  (uint16_t)n);
+    }
+    n = sprintf(buf,
                 "RAW  %4u %4u %4u %4u %4u %4u %4u %4u | FILT %4u %4u %4u %4u %4u %4u %4u %4u\r\n",
                 (unsigned int)sensor.raw[0], (unsigned int)sensor.raw[1],
                 (unsigned int)sensor.raw[2], (unsigned int)sensor.raw[3],

@@ -11,7 +11,8 @@ typedef enum {
 typedef enum {
     I2C_PHASE_IDLE = 0,
     I2C_PHASE_TX,
-    I2C_PHASE_RX
+    I2C_PHASE_RX,
+    I2C_PHASE_REPEAT_WAIT
 } I2C_AsyncPhase_t;
 
 typedef struct {
@@ -19,6 +20,7 @@ typedef struct {
     volatile uint8_t completion_pending;
     volatile BSP_Status_t completion_status;
     volatile I2C_AsyncPhase_t phase;
+    volatile uint8_t repeat_read_pending;
     I2C_AsyncOp_t op;
     uint8_t dev_addr;
     uint8_t tx_copy[I2C_TX_COPY_BUF_LEN];
@@ -31,13 +33,66 @@ typedef struct {
 
 static I2C_Runtime_t s_i2c_rt[I2C_BUS_COUNT];
 
+#define I2C_REPEAT_START_DIAG_FIX_V2 1U
+#define I2C_REPEAT_START_RUNTIME_FIX_V3 1U
+
+#define I2C_DIAG_EVENT_NONE          0U
+#define I2C_DIAG_EVENT_TX_DONE       1U
+#define I2C_DIAG_EVENT_REPEAT_WAIT   2U
+#define I2C_DIAG_EVENT_RX_START      3U
+#define I2C_DIAG_EVENT_RX_DONE       4U
+#define I2C_DIAG_EVENT_NACK          5U
+#define I2C_DIAG_EVENT_ARB_LOST      6U
+#define I2C_DIAG_EVENT_TIMEOUT       7U
+
+static void I2C_StartRepeatedRead(void);
+
+static uint16_t I2C_GetLineState(void)
+{
+    return (uint16_t)(I2C_SENSOR_INST->MASTER.MBMON & 0x03U);
+}
+
+static void I2C_RecordDebugEvent(I2C_Runtime_t *rt,
+                                 uint8_t event,
+                                 uint32_t iidx)
+{
+    if (rt == 0) {
+        return;
+    }
+
+    rt->debug.phase = (uint8_t)rt->phase;
+    rt->debug.repeat_read_pending = rt->repeat_read_pending;
+    rt->debug.last_event = event;
+    rt->debug.last_iidx = (uint8_t)iidx;
+    rt->debug.current_status =
+        (uint16_t)DL_I2C_getControllerStatus(I2C_SENSOR_INST);
+    rt->debug.line_state = I2C_GetLineState();
+}
+
 static void I2C_Abort(void)
 {
+    const uint32_t clear_mask =
+        DL_I2C_INTERRUPT_CONTROLLER_TX_DONE |
+        DL_I2C_INTERRUPT_CONTROLLER_RX_DONE |
+        DL_I2C_INTERRUPT_CONTROLLER_NACK |
+        DL_I2C_INTERRUPT_CONTROLLER_ARBITRATION_LOST;
+
     DL_DMA_disableChannel(DMA, DMA_CH2_CHAN_ID);
     DL_DMA_disableChannel(DMA, DMA_CH3_CHAN_ID);
+
+    /*
+     * 写阶段未发送STOP时，异常退出必须清除Controller ACTIVE，
+     * 否则BUSBSY和SCL可能一直保持。
+     */
+    DL_I2C_disableController(I2C_SENSOR_INST);
     DL_I2C_resetControllerTransfer(I2C_SENSOR_INST);
     DL_I2C_flushControllerTXFIFO(I2C_SENSOR_INST);
     DL_I2C_flushControllerRXFIFO(I2C_SENSOR_INST);
+    DL_I2C_clearInterruptStatus(I2C_SENSOR_INST, clear_mask);
+    NVIC_ClearPendingIRQ(I2C_SENSOR_INST_INT_IRQN);
+    DL_I2C_enableController(I2C_SENSOR_INST);
+
+    s_i2c_rt[I2C_BUS1].repeat_read_pending = 0U;
 }
 
 static BSP_Status_t I2C_WaitStatus(uint32_t mask, uint8_t wait_set)
@@ -405,6 +460,7 @@ static BSP_Status_t I2C_Queue(I2C_Bus_t bus,
     rt->callback = callback;
     rt->completion_pending = 0U;
     rt->completion_status = BSP_BUSY;
+    rt->repeat_read_pending = 0U;
     rt->phase = I2C_PHASE_IDLE;
     if (tx_len != 0U) {
         memcpy(rt->tx_copy, tx_data, tx_len);
@@ -415,6 +471,12 @@ static BSP_Status_t I2C_Queue(I2C_Bus_t bus,
     rt->debug.rx_len = rx_len;
     rt->debug.need_read = (rx_len != 0U) ? 1U : 0U;
     rt->debug.start_tick = BSP_GET_TICK();
+    rt->debug.phase = (uint8_t)I2C_PHASE_IDLE;
+    rt->debug.repeat_read_pending = 0U;
+    rt->debug.last_event = I2C_DIAG_EVENT_NONE;
+    rt->debug.last_iidx = (uint8_t)DL_I2C_IIDX_NO_INT;
+    rt->debug.current_status = (uint16_t)controller_status;
+    rt->debug.line_state = I2C_GetLineState();
     BSP_ExitCritical(key);
 
     if (op == I2C_ASYNC_READ) {
@@ -493,11 +555,22 @@ uint8_t BSP_I2C_IsBusy(I2C_Bus_t bus)
 
 BSP_Status_t BSP_I2C_GetDebug(I2C_Bus_t bus, BSP_I2C_Debug_t *debug)
 {
+    I2C_Runtime_t *rt;
+
     if ((bus >= I2C_BUS_COUNT) || (debug == 0)) {
         return BSP_PARAM;
     }
-    *debug = s_i2c_rt[bus].debug;
-    debug->sr1 = (uint16_t)DL_I2C_getControllerStatus(I2C_SENSOR_INST);
+
+    rt = &s_i2c_rt[bus];
+    *debug = rt->debug;
+    debug->phase = (uint8_t)rt->phase;
+    debug->repeat_read_pending = rt->repeat_read_pending;
+    debug->current_status =
+        (uint16_t)DL_I2C_getControllerStatus(I2C_SENSOR_INST);
+    debug->line_state = I2C_GetLineState();
+    debug->sr1 = debug->current_status;
+    debug->sr2 = debug->line_state;
+
     return BSP_OK;
 }
 
@@ -506,43 +579,98 @@ void BSP_I2C_Task(I2C_Bus_t bus)
     I2C_Runtime_t *rt;
     I2C_Callback_t callback;
     BSP_Status_t status;
+    uint32_t controller_status;
 
-    if ((bus >= I2C_BUS_COUNT) || (s_i2c_rt[bus].busy == 0U)) {
+    if ((bus >= I2C_BUS_COUNT) ||
+        (s_i2c_rt[bus].busy == 0U)) {
         return;
     }
 
     rt = &s_i2c_rt[bus];
+
+    /*
+     * TX_DONE后写阶段已经结束，但STOP被禁止，所以BUSBSY保持为1。
+     * 0x0040正是可启动重复START的等待状态，不能继续等待IDLE。
+     * 延后到任务上下文，并在Controller BUSY清零后启动读阶段。
+     */
+    if ((rt->repeat_read_pending != 0U) &&
+        (rt->completion_pending == 0U)) {
+        controller_status =
+            DL_I2C_getControllerStatus(I2C_SENSOR_INST);
+
+        rt->debug.status_repeat_wait =
+            (uint16_t)controller_status;
+        rt->debug.repeat_wait_count++;
+
+        I2C_RecordDebugEvent(
+            rt,
+            I2C_DIAG_EVENT_REPEAT_WAIT,
+            (uint32_t)DL_I2C_IIDX_NO_INT);
+
+        if ((controller_status &
+             DL_I2C_CONTROLLER_STATUS_BUSY) == 0U) {
+            rt->repeat_read_pending = 0U;
+            I2C_StartRepeatedRead();
+        }
+    }
+
     if (rt->completion_pending == 0U) {
         if ((uint32_t)(BSP_GET_TICK() - rt->debug.start_tick) <
             I2C_DMA_TIMEOUT_MS) {
             return;
         }
+
+        rt->debug.timeout_count++;
+        I2C_RecordDebugEvent(
+            rt,
+            I2C_DIAG_EVENT_TIMEOUT,
+            (uint32_t)DL_I2C_IIDX_NO_INT);
+
         I2C_Abort();
         rt->completion_status = BSP_TIMEOUT;
         rt->completion_pending = 1U;
     }
 
     status = rt->completion_status;
+
+    if ((status == BSP_OK) &&
+        (rt->rx_len != 0U) &&
+        (rt->rx_buf != 0)) {
+        rt->debug.rx_first = rt->rx_buf[0];
+    }
+
     rt->debug.state = 0U;
-    rt->debug.tx_pos = (status == BSP_OK) ? rt->tx_len : 0U;
+    rt->debug.tx_pos =
+        (status == BSP_OK) ? rt->tx_len : 0U;
+
     if (status != BSP_OK) {
         rt->debug.error_count++;
-        rt->debug.error_source = (status == BSP_TIMEOUT) ? 2U : 1U;
+        rt->debug.error_source =
+            (status == BSP_TIMEOUT) ? 2U : 1U;
         rt->debug.error_state = (uint8_t)rt->op;
         rt->debug.error_dev_addr = rt->dev_addr;
+        rt->debug.error_tx_pos = rt->debug.tx_pos;
         rt->debug.error_tx_len = rt->tx_len;
         rt->debug.error_rx_len = rt->rx_len;
         rt->debug.error_sr1 =
             (uint16_t)DL_I2C_getControllerStatus(I2C_SENSOR_INST);
+        rt->debug.error_sr2 = I2C_GetLineState();
     }
+
     callback = rt->callback;
+
     rt->busy = 0U;
     rt->op = I2C_ASYNC_NONE;
     rt->phase = I2C_PHASE_IDLE;
+    rt->repeat_read_pending = 0U;
     rt->completion_pending = 0U;
+    rt->callback = 0;
+
     if (callback != 0) {
-        callback(bus, (status == BSP_OK) ? 0 :
-                      ((status == BSP_TIMEOUT) ? -2 : -1));
+        callback(
+            bus,
+            (status == BSP_OK) ? 0 :
+            ((status == BSP_TIMEOUT) ? -2 : -1));
     }
 }
 
@@ -565,6 +693,10 @@ static void I2C_StartRepeatedRead(void)
 {
     I2C_Runtime_t *rt = &s_i2c_rt[I2C_BUS1];
 
+    rt->debug.status_repeat_before =
+        (uint16_t)DL_I2C_getControllerStatus(I2C_SENSOR_INST);
+    rt->debug.repeat_start_count++;
+
     DL_DMA_disableChannel(DMA, DMA_CH2_CHAN_ID);
     DL_DMA_disableChannel(DMA, DMA_CH3_CHAN_ID);
     DL_I2C_flushControllerRXFIFO(I2C_SENSOR_INST);
@@ -575,12 +707,21 @@ static void I2C_StartRepeatedRead(void)
     DL_DMA_setTransferSize(DMA, DMA_CH3_CHAN_ID, rt->rx_len);
     rt->phase = I2C_PHASE_RX;
     DL_DMA_enableChannel(DMA, DMA_CH3_CHAN_ID);
+
     DL_I2C_startControllerTransferAdvanced(
         I2C_SENSOR_INST, rt->dev_addr,
         DL_I2C_CONTROLLER_DIRECTION_RX, rt->rx_len,
         DL_I2C_CONTROLLER_START_ENABLE,
         DL_I2C_CONTROLLER_STOP_ENABLE,
         DL_I2C_CONTROLLER_ACK_ENABLE);
+
+    rt->debug.status_repeat_after =
+        (uint16_t)DL_I2C_getControllerStatus(I2C_SENSOR_INST);
+
+    I2C_RecordDebugEvent(
+        rt,
+        I2C_DIAG_EVENT_RX_START,
+        (uint32_t)DL_I2C_IIDX_NO_INT);
 }
 
 static void I2C_HandleInterrupt(void)
@@ -590,24 +731,68 @@ static void I2C_HandleInterrupt(void)
 
     do {
         iidx = DL_I2C_getPendingInterrupt(I2C_SENSOR_INST);
-        if ((iidx == DL_I2C_IIDX_CONTROLLER_NACK) ||
-            (iidx == DL_I2C_IIDX_CONTROLLER_ARBITRATION_LOST)) {
+
+        if (iidx == DL_I2C_IIDX_CONTROLLER_NACK) {
             if (rt->busy != 0U) {
+                rt->debug.nack_count++;
+                I2C_RecordDebugEvent(
+                    rt,
+                    I2C_DIAG_EVENT_NACK,
+                    (uint32_t)iidx);
                 I2C_Abort();
                 I2C_MarkCompletion(BSP_ERROR);
             }
-        } else if (iidx == DL_I2C_IIDX_CONTROLLER_TX_DONE) {
-            if ((rt->busy != 0U) && (rt->phase == I2C_PHASE_TX)) {
+        } else if (iidx ==
+                   DL_I2C_IIDX_CONTROLLER_ARBITRATION_LOST) {
+            if (rt->busy != 0U) {
+                I2C_RecordDebugEvent(
+                    rt,
+                    I2C_DIAG_EVENT_ARB_LOST,
+                    (uint32_t)iidx);
+                I2C_Abort();
+                I2C_MarkCompletion(BSP_ERROR);
+            }
+        } else if (iidx ==
+                   DL_I2C_IIDX_CONTROLLER_TX_DONE) {
+            if ((rt->busy != 0U) &&
+                (rt->phase == I2C_PHASE_TX)) {
                 DL_DMA_disableChannel(DMA, DMA_CH2_CHAN_ID);
+
+                rt->debug.tx_done_count++;
+                rt->debug.status_tx_done =
+                    (uint16_t)DL_I2C_getControllerStatus(
+                        I2C_SENSOR_INST);
+                I2C_RecordDebugEvent(
+                    rt,
+                    I2C_DIAG_EVENT_TX_DONE,
+                    (uint32_t)iidx);
+
                 if (rt->op == I2C_ASYNC_WRITE_READ) {
-                    I2C_StartRepeatedRead();
+                    rt->phase = I2C_PHASE_REPEAT_WAIT;
+                    rt->repeat_read_pending = 1U;
+                    I2C_RecordDebugEvent(
+                        rt,
+                        I2C_DIAG_EVENT_REPEAT_WAIT,
+                        (uint32_t)iidx);
                 } else {
                     I2C_MarkCompletion(BSP_OK);
                 }
             }
-        } else if (iidx == DL_I2C_IIDX_CONTROLLER_RX_DONE) {
-            if ((rt->busy != 0U) && (rt->phase == I2C_PHASE_RX)) {
+        } else if (iidx ==
+                   DL_I2C_IIDX_CONTROLLER_RX_DONE) {
+            if ((rt->busy != 0U) &&
+                (rt->phase == I2C_PHASE_RX)) {
                 DL_DMA_disableChannel(DMA, DMA_CH3_CHAN_ID);
+
+                rt->debug.rx_done_count++;
+                rt->debug.status_rx_done =
+                    (uint16_t)DL_I2C_getControllerStatus(
+                        I2C_SENSOR_INST);
+                I2C_RecordDebugEvent(
+                    rt,
+                    I2C_DIAG_EVENT_RX_DONE,
+                    (uint32_t)iidx);
+
                 I2C_MarkCompletion(BSP_OK);
             }
         }
