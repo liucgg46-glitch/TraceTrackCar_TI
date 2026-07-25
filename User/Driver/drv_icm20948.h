@@ -43,6 +43,12 @@ extern "C" {
 #define DRV_ICM20948_SPI_BUS                   SPI_BUS2
 #define DRV_ICM20948_CS_GPIO                   BSP_GPIO_ICM20948_CS
 
+/* 最近一次底层寄存器操作类型，仅供初始化链路诊断使用。 */
+#define DRV_ICM20948_DIAG_OP_NONE               0U
+#define DRV_ICM20948_DIAG_OP_BANK               1U
+#define DRV_ICM20948_DIAG_OP_READ               2U
+#define DRV_ICM20948_DIAG_OP_WRITE              3U
+
 /* ICM-20948 主芯片固定标识。 */
 #define DRV_ICM20948_WHO_AM_I_EXPECTED          0xEAU
 
@@ -321,6 +327,23 @@ typedef struct {
     uint8_t consecutive_errors;
     BSP_Status_t last_status;
     Drv_ICM20948_State_t state;
+
+    /* 初始化失败现场，仅用于串口诊断，不参与控制逻辑。 */
+    Drv_ICM20948_State_t last_error_state;
+    uint8_t diag_last_op;
+    uint8_t diag_last_bank;
+    uint8_t diag_last_reg;
+    uint8_t diag_last_tx;
+    uint8_t diag_last_rx;
+    BSP_Status_t diag_last_status;
+    uint32_t diag_sequence;
+    uint8_t error_op;
+    uint8_t error_bank;
+    uint8_t error_reg;
+    uint8_t error_tx;
+    uint8_t error_rx;
+    BSP_Status_t error_op_status;
+    uint32_t error_sequence;
 
     uint32_t sample_count;
     uint32_t valid_count;

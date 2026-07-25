@@ -2236,6 +2236,58 @@ void Test_ICM20948_Update(void)
                    ((info.gyro_cal_samples != 0U) ? "DONE" : "NOT STARTED"));
     Test_ICM20948_Print(line);
 
+    (void)snprintf(
+        line,
+        sizeof(line),
+        "Init trace      : current=%u last_error=%u status=%u errseq=%u\r\n",
+        (unsigned int)info.state,
+        (unsigned int)info.last_error_state,
+        (unsigned int)info.last_status,
+        (unsigned int)info.consecutive_errors);
+    Test_ICM20948_Print(line);
+
+    (void)snprintf(
+        line,
+        sizeof(line),
+        "Error snapshot  : seq=%lu op=%u bank=%u reg=0x%02X "
+        "tx=0x%02X rx=0x%02X op_status=%u\r\n",
+        (unsigned long)info.error_sequence,
+        (unsigned int)info.error_op,
+        (unsigned int)info.error_bank,
+        (unsigned int)info.error_reg,
+        (unsigned int)info.error_tx,
+        (unsigned int)info.error_rx,
+        (unsigned int)info.error_op_status);
+    Test_ICM20948_Print(line);
+
+    (void)snprintf(
+        line,
+        sizeof(line),
+        "Last register   : seq=%lu op=%u bank=%u reg=0x%02X "
+        "tx=0x%02X rx=0x%02X result=%u\r\n",
+        (unsigned long)info.diag_sequence,
+        (unsigned int)info.diag_last_op,
+        (unsigned int)info.diag_last_bank,
+        (unsigned int)info.diag_last_reg,
+        (unsigned int)info.diag_last_tx,
+        (unsigned int)info.diag_last_rx,
+        (unsigned int)info.diag_last_status);
+    Test_ICM20948_Print(line);
+
+    (void)snprintf(
+        line,
+        sizeof(line),
+        "Init readback   : USER=0x%02X LP=0x%02X MST_CTRL=0x%02X "
+        "MST_ST=0x%02X WIA1=0x%02X WIA2=0x%02X retry=%u\r\n",
+        (unsigned int)info.user_ctrl_readback,
+        (unsigned int)info.lp_config_readback,
+        (unsigned int)info.i2c_mst_ctrl_readback,
+        (unsigned int)info.last_i2c_mst_status,
+        (unsigned int)info.mag_wia1,
+        (unsigned int)info.mag_wia2,
+        (unsigned int)info.mag_retry_count);
+    Test_ICM20948_Print(line);
+
     if (data_status == BSP_OK) {
         Test_FormatFixed(ax, sizeof(ax),
                          (long)(data.accel_filtered_g.x * 1000.0f),

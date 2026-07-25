@@ -268,6 +268,26 @@ static void ICM20948_MapMagAxes(const float source[3], float mapped[3])
 }
 
 /* ============================== SPI 基础访问 =============================== */
+static void ICM20948_DiagBegin(uint8_t op,
+                               uint8_t bank,
+                               uint8_t reg,
+                               uint8_t tx)
+{
+    s_info.diag_sequence++;
+    s_info.diag_last_op = op;
+    s_info.diag_last_bank = bank;
+    s_info.diag_last_reg = reg;
+    s_info.diag_last_tx = tx;
+    s_info.diag_last_rx = 0U;
+    s_info.diag_last_status = BSP_BUSY;
+}
+
+static void ICM20948_DiagEnd(BSP_Status_t status, uint8_t rx)
+{
+    s_info.diag_last_status = status;
+    s_info.diag_last_rx = rx;
+}
+
 static BSP_Status_t ICM20948_SPIRead(uint8_t reg, uint8_t *data, uint16_t len)
 {
     uint8_t rx;
@@ -341,7 +361,12 @@ static BSP_Status_t ICM20948_SelectBank(uint8_t bank)
     }
 
     value = (uint8_t)(bank << 4);
+    ICM20948_DiagBegin(DRV_ICM20948_DIAG_OP_BANK,
+                       bank,
+                       ICM20948_REG_BANK_SEL,
+                       value);
     status = ICM20948_SPIWrite(ICM20948_REG_BANK_SEL, &value, 1U);
+    ICM20948_DiagEnd(status, 0U);
     if (status == BSP_OK) {
         s_current_bank = bank;
     }
@@ -356,7 +381,15 @@ static BSP_Status_t ICM20948_ReadRegister(uint8_t bank, uint8_t reg, uint8_t *va
     if (status != BSP_OK) {
         return status;
     }
-    return ICM20948_SPIRead(reg, value, 1U);
+
+    ICM20948_DiagBegin(DRV_ICM20948_DIAG_OP_READ,
+                       bank,
+                       reg,
+                       (uint8_t)(reg | ICM20948_SPI_READ_BIT));
+    status = ICM20948_SPIRead(reg, value, 1U);
+    ICM20948_DiagEnd(status,
+                     ((status == BSP_OK) && (value != 0)) ? *value : 0U);
+    return status;
 }
 
 static BSP_Status_t ICM20948_ReadRegisters(uint8_t bank,
@@ -370,7 +403,16 @@ static BSP_Status_t ICM20948_ReadRegisters(uint8_t bank,
     if (status != BSP_OK) {
         return status;
     }
-    return ICM20948_SPIRead(reg, data, len);
+
+    ICM20948_DiagBegin(DRV_ICM20948_DIAG_OP_READ,
+                       bank,
+                       reg,
+                       (uint8_t)(reg | ICM20948_SPI_READ_BIT));
+    status = ICM20948_SPIRead(reg, data, len);
+    ICM20948_DiagEnd(status,
+                     ((status == BSP_OK) && (data != 0) && (len != 0U)) ?
+                         data[0] : 0U);
+    return status;
 }
 
 static BSP_Status_t ICM20948_WriteRegister(uint8_t bank, uint8_t reg, uint8_t value)
@@ -381,7 +423,11 @@ static BSP_Status_t ICM20948_WriteRegister(uint8_t bank, uint8_t reg, uint8_t va
     if (status != BSP_OK) {
         return status;
     }
-    return ICM20948_SPIWrite(reg, &value, 1U);
+
+    ICM20948_DiagBegin(DRV_ICM20948_DIAG_OP_WRITE, bank, reg, value);
+    status = ICM20948_SPIWrite(reg, &value, 1U);
+    ICM20948_DiagEnd(status, 0U);
+    return status;
 }
 
 /* ============================== 错误与状态 ================================ */
@@ -393,6 +439,14 @@ static void ICM20948_SetState(Drv_ICM20948_State_t state)
 
 static void ICM20948_EnterError(BSP_Status_t status)
 {
+    s_info.last_error_state = s_info.state;
+    s_info.error_op = s_info.diag_last_op;
+    s_info.error_bank = s_info.diag_last_bank;
+    s_info.error_reg = s_info.diag_last_reg;
+    s_info.error_tx = s_info.diag_last_tx;
+    s_info.error_rx = s_info.diag_last_rx;
+    s_info.error_op_status = s_info.diag_last_status;
+    s_info.error_sequence = s_info.diag_sequence;
     s_info.last_status = status;
     s_info.error_count++;
     s_info.consecutive_errors++;
@@ -1080,6 +1134,11 @@ void Drv_ICM20948_Init(void)
 
     s_info.enabled = (DRV_ICM20948_ENABLE != 0U) ? 1U : 0U;
     s_info.last_status = BSP_OK;
+    s_info.last_error_state = DRV_ICM20948_STATE_DISABLED;
+    s_info.diag_last_op = DRV_ICM20948_DIAG_OP_NONE;
+    s_info.diag_last_status = BSP_OK;
+    s_info.error_op = DRV_ICM20948_DIAG_OP_NONE;
+    s_info.error_op_status = BSP_OK;
     s_info.last_i2c_mst_status = 0U;
     s_info.mag_retry_count = 0U;
     s_info.user_ctrl_readback = 0U;
