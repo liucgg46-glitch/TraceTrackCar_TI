@@ -904,23 +904,96 @@ void Test_E220_Link_Update(void)
 /* 扫描 I2C0 总线上的 7 位从设备地址。 */
 void Test_I2C_Scan(void)
 {
+    static uint8_t scan_finished = 0U;
+    static uint32_t last_try_ms = 0U;
     uint8_t addr[16];
-    uint8_t found = 0;
-    char buf[128];
+    uint8_t found = 0U;
+    uint8_t i;
+    BSP_Status_t status;
+    char buf[160];
     int n;
 
-    if (BSP_I2C_ScanBus(I2C_BUS1, addr, 16, &found) != BSP_OK) {
-        BSP_UART_WriteFrame(DEBUG_UART_PORT, (const uint8_t *)"I2C scan error\r\n", 16);
+    if (scan_finished != 0U) {
         return;
     }
 
-    n = sprintf(buf, "I2C found %u:", found);
-    for (uint8_t i = 0; i < found; i++) {
-        n += sprintf(&buf[n], " 0x%02X", addr[i]);
+    /*
+     * OLED和MCU灰度均使用异步I2C。总线忙时不报错，
+     * 每100 ms重试，直到取得一次完整扫描结果。
+     */
+    if ((uint32_t)(BSP_GET_TICK() - last_try_ms) < 100U) {
+        return;
     }
-    n += sprintf(&buf[n], "\r\n");
+    last_try_ms = BSP_GET_TICK();
 
-    BSP_UART_WriteFrame(DEBUG_UART_PORT, (const uint8_t *)buf, (uint16_t)n);
+    status = BSP_I2C_ScanBus(
+        I2C_BUS1,
+        addr,
+        (uint8_t)sizeof(addr),
+        &found);
+
+    if (status == BSP_BUSY) {
+        return;
+    }
+
+    if (status != BSP_OK) {
+        n = snprintf(
+            buf,
+            sizeof(buf),
+            "I2C scan error status=%u\r\n",
+            (unsigned int)status);
+        if ((n > 0) && (n < (int)sizeof(buf))) {
+            (void)BSP_UART_WriteFrame(
+                DEBUG_UART_PORT,
+                (const uint8_t *)buf,
+                (uint16_t)n);
+        }
+        return;
+    }
+
+    n = snprintf(
+        buf,
+        sizeof(buf),
+        "I2C found %u:",
+        (unsigned int)found);
+
+    for (i = 0U;
+         (i < found) && (n > 0) && (n < (int)sizeof(buf));
+         i++) {
+        int added = snprintf(
+            &buf[n],
+            sizeof(buf) - (size_t)n,
+            " 0x%02X",
+            (unsigned int)addr[i]);
+
+        if ((added <= 0) ||
+            (added >= ((int)sizeof(buf) - n))) {
+            n = (int)sizeof(buf);
+            break;
+        }
+        n += added;
+    }
+
+    if ((found == 0U) &&
+        (n > 0) &&
+        (n < ((int)sizeof(buf) - 6))) {
+        n += snprintf(
+            &buf[n],
+            sizeof(buf) - (size_t)n,
+            " NONE");
+    }
+
+    if ((n > 0) && (n < ((int)sizeof(buf) - 3))) {
+        buf[n++] = '\r';
+        buf[n++] = '\n';
+        buf[n] = '\0';
+
+        (void)BSP_UART_WriteFrame(
+            DEBUG_UART_PORT,
+            (const uint8_t *)buf,
+            (uint16_t)n);
+        scan_finished = 1U;
+    }
 }
 
 void Test_DriveProfile_Update(void)

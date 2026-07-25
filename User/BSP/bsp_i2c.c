@@ -211,42 +211,158 @@ BSP_Status_t BSP_I2C_MasterWriteRead(I2C_Bus_t bus, uint8_t dev_addr,
 
 static BSP_Status_t I2C_Probe(uint8_t dev_addr)
 {
-    BSP_Status_t status;
+    const uint32_t event_mask =
+        DL_I2C_INTERRUPT_CONTROLLER_TX_DONE |
+        DL_I2C_INTERRUPT_CONTROLLER_NACK |
+        DL_I2C_INTERRUPT_CONTROLLER_ARBITRATION_LOST;
+    uint32_t timeout;
+    uint32_t events;
+    uint32_t controller_status;
 
-    status = I2C_WaitStatus(DL_I2C_CONTROLLER_STATUS_IDLE, 1U);
-    if (status != BSP_OK) {
-        return status;
-    }
-    DL_I2C_startControllerTransfer(I2C_SENSOR_INST, dev_addr,
-        DL_I2C_CONTROLLER_DIRECTION_TX, 0U);
-    status = I2C_WaitStatus(DL_I2C_CONTROLLER_STATUS_BUSY, 0U);
-    if (status == BSP_OK) {
-        status = I2C_WaitStatus(DL_I2C_CONTROLLER_STATUS_BUSY_BUS, 0U);
-    }
-    return status;
-}
-
-BSP_Status_t BSP_I2C_ScanBus(I2C_Bus_t bus, uint8_t *out_addr_list,
-                             uint8_t max_count, uint8_t *out_found_count)
-{
-    uint8_t address;
-    uint8_t found = 0U;
-
-    if ((bus >= I2C_BUS_COUNT) || (out_addr_list == 0) ||
-        (out_found_count == 0) || (max_count == 0U)) {
+    if (dev_addr > 0x7FU) {
         return BSP_PARAM;
     }
 
+    controller_status = DL_I2C_getControllerStatus(I2C_SENSOR_INST);
+    if (((controller_status & DL_I2C_CONTROLLER_STATUS_IDLE) == 0U) ||
+        ((controller_status & DL_I2C_CONTROLLER_STATUS_BUSY_BUS) != 0U)) {
+        return BSP_BUSY;
+    }
+
+    /*
+     * 地址扫描使用零字节写事务，只发送START、7位地址和STOP。
+     * 不能在启动后立刻检查BUSY=0，因为硬件可能尚未来得及置位BUSY。
+     * 必须等待TX_DONE或NACK，才能判断目标地址是否真正应答。
+     */
+    DL_I2C_resetControllerTransfer(I2C_SENSOR_INST);
+    DL_I2C_flushControllerTXFIFO(I2C_SENSOR_INST);
+    DL_I2C_flushControllerRXFIFO(I2C_SENSOR_INST);
+    DL_I2C_clearInterruptStatus(I2C_SENSOR_INST, event_mask);
+
+    DL_I2C_startControllerTransferAdvanced(
+        I2C_SENSOR_INST,
+        dev_addr,
+        DL_I2C_CONTROLLER_DIRECTION_TX,
+        0U,
+        DL_I2C_CONTROLLER_START_ENABLE,
+        DL_I2C_CONTROLLER_STOP_ENABLE,
+        DL_I2C_CONTROLLER_ACK_ENABLE);
+
+    timeout = I2C_BLOCK_TIMEOUT;
+    while (timeout > 0U) {
+        events = DL_I2C_getRawInterruptStatus(
+            I2C_SENSOR_INST,
+            event_mask);
+
+        if ((events & DL_I2C_INTERRUPT_CONTROLLER_NACK) != 0U) {
+            DL_I2C_clearInterruptStatus(I2C_SENSOR_INST, event_mask);
+            I2C_Abort();
+            return BSP_ERROR;
+        }
+
+        if ((events &
+             DL_I2C_INTERRUPT_CONTROLLER_ARBITRATION_LOST) != 0U) {
+            DL_I2C_clearInterruptStatus(I2C_SENSOR_INST, event_mask);
+            I2C_Abort();
+            return BSP_BUSY;
+        }
+
+        if ((events & DL_I2C_INTERRUPT_CONTROLLER_TX_DONE) != 0U) {
+            DL_I2C_clearInterruptStatus(I2C_SENSOR_INST, event_mask);
+
+            timeout = I2C_BLOCK_TIMEOUT;
+            while (((DL_I2C_getControllerStatus(I2C_SENSOR_INST) &
+                     DL_I2C_CONTROLLER_STATUS_BUSY_BUS) != 0U) &&
+                   (timeout > 0U)) {
+                timeout--;
+            }
+
+            if (timeout == 0U) {
+                I2C_Abort();
+                return BSP_TIMEOUT;
+            }
+
+            DL_I2C_resetControllerTransfer(I2C_SENSOR_INST);
+            return BSP_OK;
+        }
+
+        timeout--;
+    }
+
+    DL_I2C_clearInterruptStatus(I2C_SENSOR_INST, event_mask);
+    I2C_Abort();
+    return BSP_TIMEOUT;
+}
+
+BSP_Status_t BSP_I2C_ScanBus(I2C_Bus_t bus,
+                              uint8_t *out_addr_list,
+                              uint8_t max_count,
+                              uint8_t *out_found_count)
+{
+    const uint32_t event_mask =
+        DL_I2C_INTERRUPT_CONTROLLER_TX_DONE |
+        DL_I2C_INTERRUPT_CONTROLLER_NACK |
+        DL_I2C_INTERRUPT_CONTROLLER_ARBITRATION_LOST;
+    BSP_Status_t result = BSP_OK;
+    BSP_Status_t probe_status;
+    uint32_t controller_status;
+    uint8_t address;
+    uint8_t found = 0U;
+
+    if ((bus >= I2C_BUS_COUNT) ||
+        (out_addr_list == 0) ||
+        (out_found_count == 0) ||
+        (max_count == 0U)) {
+        return BSP_PARAM;
+    }
+
+    *out_found_count = 0U;
+
+    /*
+     * 扫描是同步独占操作。异步OLED、灰度或测距事务正在运行时，
+     * 不允许插入地址探测，否则会破坏DMA状态机。
+     */
+    if (s_i2c_rt[bus].busy != 0U) {
+        return BSP_BUSY;
+    }
+
+    controller_status = DL_I2C_getControllerStatus(I2C_SENSOR_INST);
+    if (((controller_status & DL_I2C_CONTROLLER_STATUS_IDLE) == 0U) ||
+        ((controller_status & DL_I2C_CONTROLLER_STATUS_BUSY_BUS) != 0U)) {
+        return BSP_BUSY;
+    }
+
+    /*
+     * I2C中断处理函数会读取IIDX并消费TX_DONE/NACK。
+     * 扫描期间暂时关闭本I2C的NVIC入口，由I2C_Probe直接读取原始中断状态。
+     */
+    NVIC_DisableIRQ(I2C_SENSOR_INST_INT_IRQN);
+    NVIC_ClearPendingIRQ(I2C_SENSOR_INST_INT_IRQN);
+    DL_I2C_clearInterruptStatus(I2C_SENSOR_INST, event_mask);
+
     for (address = 0x08U; address <= 0x77U; address++) {
-        if (I2C_Probe(address) == BSP_OK) {
+        probe_status = I2C_Probe(address);
+
+        if (probe_status == BSP_OK) {
             if (found < max_count) {
                 out_addr_list[found] = address;
                 found++;
             }
+        } else if (probe_status == BSP_ERROR) {
+            /* 地址NACK表示该地址没有设备，继续扫描。 */
+        } else {
+            result = probe_status;
+            break;
         }
     }
+
+    DL_I2C_clearInterruptStatus(I2C_SENSOR_INST, event_mask);
+    DL_I2C_resetControllerTransfer(I2C_SENSOR_INST);
+    NVIC_ClearPendingIRQ(I2C_SENSOR_INST_INT_IRQN);
+    NVIC_EnableIRQ(I2C_SENSOR_INST_INT_IRQN);
+
     *out_found_count = found;
-    return BSP_OK;
+    return result;
 }
 
 static BSP_Status_t I2C_Queue(I2C_Bus_t bus,
