@@ -570,11 +570,6 @@
               <FilePath>../User/Algorithm/attitude_estimator.h</FilePath>
             </File>
             <File>
-              <FileName>control_config.h</FileName>
-              <FileType>5</FileType>
-              <FilePath>../User/Algorithm/control_config.h</FilePath>
-            </File>
-            <File>
               <FileName>heading_estimator.c</FileName>
               <FileType>1</FileType>
               <FilePath>../User/Algorithm/heading_estimator.c</FilePath>
@@ -623,6 +618,11 @@
               <FileName>pid.h</FileName>
               <FileType>5</FileType>
               <FilePath>../User/Algorithm/pid.h</FilePath>
+            </File>
+            <File>
+              <FileName>control_config.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\User\Algorithm\control_config.h</FilePath>
             </File>
           </Files>
         </Group>

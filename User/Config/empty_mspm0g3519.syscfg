@@ -237,16 +237,14 @@ GPIOC_BOARD.associatedPins[2].initialValue = "CLEARED";
 GPIOC_BOARD.associatedPins[2].pin.$assign  = "PC1";
 
 GPIOC_BOARD.associatedPins[3].$name        = "LASER_EN";
-GPIOC_BOARD.associatedPins[3].assignedPin  = "6";
+GPIOC_BOARD.associatedPins[3].assignedPin  = "3";
 GPIOC_BOARD.associatedPins[3].initialValue = "CLEARED";
-GPIOC_BOARD.associatedPins[3].pin.$assign  = "PC6";
-
+GPIOC_BOARD.associatedPins[3].pin.$assign  = "PC3";
 GPIOC_BOARD.associatedPins[4].$name            = "HX711_DOUT";
-GPIOC_BOARD.associatedPins[4].assignedPin      = "7";
+GPIOC_BOARD.associatedPins[4].assignedPin      = "5";
 GPIOC_BOARD.associatedPins[4].direction        = "INPUT";
 GPIOC_BOARD.associatedPins[4].internalResistor = "PULL_UP";
-GPIOC_BOARD.associatedPins[4].pin.$assign      = "PC7";
-
+GPIOC_BOARD.associatedPins[4].pin.$assign      = "PC5";
 /*
  * 四路直流电机 PWM 共用 TIMA0，32 MHz / 1600 = 20 kHz。
  * 所有通道初始占空比为 0，避免上电时电机误动作。
@@ -306,9 +304,12 @@ QEI_FRONT_RIGHT.peripheral.ccp1Pin.$assign = "PB30";
 
 /*
  * 三路 UART 独立分工，均为 115200-8-N-1：
- * UART0：板载 CH340 / Type-C 调试串口，PA10 TX、PA11 RX；
+ * UART3：外接 USB-TTL 调试串口，PC6 TX、PC7 RX；
  * UART1：K210，PB4 TX、PB5 RX；
  * UART4：E220，PB10 TX、PB11 RX。
+ *
+ * UART_DEBUG逻辑名称保持不变，仅将底层硬件由UART0改为UART3。
+ * LASER_EN迁移到PC3，HX711_DOUT迁移到PC5。
  */
 UART_DEBUG.$name                    = "UART_DEBUG";
 UART_DEBUG.targetBaudRate           = 115200;
@@ -316,10 +317,9 @@ UART_DEBUG.enableFIFO               = true;
 UART_DEBUG.rxFifoThreshold          = "DL_UART_RX_FIFO_LEVEL_ONE_ENTRY";
 UART_DEBUG.txFifoThreshold          = "DL_UART_TX_FIFO_LEVEL_3_4_EMPTY";
 UART_DEBUG.enabledInterrupts        = ["RX","TX"];
-UART_DEBUG.peripheral.$assign       = "UART0";
-UART_DEBUG.peripheral.txPin.$assign = "PA10";
-UART_DEBUG.peripheral.rxPin.$assign = "PA11";
-
+UART_DEBUG.peripheral.$assign       = "UART3";
+UART_DEBUG.peripheral.txPin.$assign = "PC6";
+UART_DEBUG.peripheral.rxPin.$assign = "PC7";
 UART_K210.$name                    = "UART_K210";
 UART_K210.targetBaudRate           = 115200;
 UART_K210.enableFIFO               = true;

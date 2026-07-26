@@ -176,22 +176,6 @@ extern "C" {
 #define GPIO_I2C_SENSOR_IOMUX_SCL_FUNC                  IOMUX_PINCM2_PF_I2C0_SCL
 
 
-/* Defines for UART_DEBUG */
-#define UART_DEBUG_INST                                                     UART0
-#define UART_DEBUG_INST_FREQUENCY                                        32000000
-#define UART_DEBUG_INST_IRQHandler                               UART0_IRQHandler
-#define UART_DEBUG_INST_INT_IRQN                                   UART0_INT_IRQn
-#define GPIO_UART_DEBUG_RX_PORT                                             GPIOA
-#define GPIO_UART_DEBUG_TX_PORT                                             GPIOA
-#define GPIO_UART_DEBUG_RX_PIN                                     DL_GPIO_PIN_11
-#define GPIO_UART_DEBUG_TX_PIN                                     DL_GPIO_PIN_10
-#define GPIO_UART_DEBUG_IOMUX_RX                                  (IOMUX_PINCM22)
-#define GPIO_UART_DEBUG_IOMUX_TX                                  (IOMUX_PINCM21)
-#define GPIO_UART_DEBUG_IOMUX_RX_FUNC                   IOMUX_PINCM22_PF_UART0_RX
-#define GPIO_UART_DEBUG_IOMUX_TX_FUNC                   IOMUX_PINCM21_PF_UART0_TX
-#define UART_DEBUG_BAUD_RATE                                             (115200)
-#define UART_DEBUG_IBRD_32_MHZ_115200_BAUD                                   (17)
-#define UART_DEBUG_FBRD_32_MHZ_115200_BAUD                                   (23)
 /* Defines for UART_K210 */
 #define UART_K210_INST                                                     UART1
 #define UART_K210_INST_FREQUENCY                                        32000000
@@ -224,6 +208,22 @@ extern "C" {
 #define UART_E220_BAUD_RATE                                             (115200)
 #define UART_E220_IBRD_32_MHZ_115200_BAUD                                   (17)
 #define UART_E220_FBRD_32_MHZ_115200_BAUD                                   (23)
+/* Defines for UART_DEBUG */
+#define UART_DEBUG_INST                                                    UART3
+#define UART_DEBUG_INST_FREQUENCY                                       32000000
+#define UART_DEBUG_INST_IRQHandler                              UART3_IRQHandler
+#define UART_DEBUG_INST_INT_IRQN                                  UART3_INT_IRQn
+#define GPIO_UART_DEBUG_RX_PORT                                            GPIOC
+#define GPIO_UART_DEBUG_TX_PORT                                            GPIOC
+#define GPIO_UART_DEBUG_RX_PIN                                     DL_GPIO_PIN_7
+#define GPIO_UART_DEBUG_TX_PIN                                     DL_GPIO_PIN_6
+#define GPIO_UART_DEBUG_IOMUX_RX                                 (IOMUX_PINCM85)
+#define GPIO_UART_DEBUG_IOMUX_TX                                 (IOMUX_PINCM84)
+#define GPIO_UART_DEBUG_IOMUX_RX_FUNC                  IOMUX_PINCM85_PF_UART3_RX
+#define GPIO_UART_DEBUG_IOMUX_TX_FUNC                  IOMUX_PINCM84_PF_UART3_TX
+#define UART_DEBUG_BAUD_RATE                                            (115200)
+#define UART_DEBUG_IBRD_32_MHZ_115200_BAUD                                  (17)
+#define UART_DEBUG_FBRD_32_MHZ_115200_BAUD                                  (23)
 
 
 
@@ -409,12 +409,12 @@ extern "C" {
 /* Defines for GRAY_S2: GPIOC.1 with pinCMx 75 on package pin 47 */
 #define GPIO_DISPLAY_GRAY_GRAY_S2_PIN                            (DL_GPIO_PIN_1)
 #define GPIO_DISPLAY_GRAY_GRAY_S2_IOMUX                          (IOMUX_PINCM75)
-/* Defines for LASER_EN: GPIOC.6 with pinCMx 84 on package pin 63 */
-#define GPIO_DISPLAY_GRAY_LASER_EN_PIN                           (DL_GPIO_PIN_6)
-#define GPIO_DISPLAY_GRAY_LASER_EN_IOMUX                         (IOMUX_PINCM84)
-/* Defines for HX711_DOUT: GPIOC.7 with pinCMx 85 on package pin 64 */
-#define GPIO_DISPLAY_GRAY_HX711_DOUT_PIN                         (DL_GPIO_PIN_7)
-#define GPIO_DISPLAY_GRAY_HX711_DOUT_IOMUX                       (IOMUX_PINCM85)
+/* Defines for LASER_EN: GPIOC.3 with pinCMx 77 on package pin 51 */
+#define GPIO_DISPLAY_GRAY_LASER_EN_PIN                           (DL_GPIO_PIN_3)
+#define GPIO_DISPLAY_GRAY_LASER_EN_IOMUX                         (IOMUX_PINCM77)
+/* Defines for HX711_DOUT: GPIOC.5 with pinCMx 79 on package pin 53 */
+#define GPIO_DISPLAY_GRAY_HX711_DOUT_PIN                         (DL_GPIO_PIN_5)
+#define GPIO_DISPLAY_GRAY_HX711_DOUT_IOMUX                       (IOMUX_PINCM79)
 
 
 
@@ -430,9 +430,9 @@ void SYSCFG_DL_PWM_SERVO_init(void);
 void SYSCFG_DL_QEI_FRONT_LEFT_init(void);
 void SYSCFG_DL_QEI_FRONT_RIGHT_init(void);
 void SYSCFG_DL_I2C_SENSOR_init(void);
-void SYSCFG_DL_UART_DEBUG_init(void);
 void SYSCFG_DL_UART_K210_init(void);
 void SYSCFG_DL_UART_E220_init(void);
+void SYSCFG_DL_UART_DEBUG_init(void);
 void SYSCFG_DL_SPI_DISPLAY_init(void);
 void SYSCFG_DL_SPI_ICM20948_init(void);
 void SYSCFG_DL_ADC_GRAY_init(void);

@@ -12,10 +12,10 @@ extern "C" {
 #define UART_TX_BUF_SIZE 512U
 
 /*
- * 保持旧工程端口编号不变，并增加板载 CH340 调试口：
- * UART_PORT1     = E220（PB10/PB11，硬件 UART4）
- * UART_PORT2     = K210（PB4/PB5，硬件 UART1）
- * UART_PORT_DEBUG = Type-C/CH340（PA10 TX、PA11 RX，硬件 UART0）
+ * 保持原有逻辑端口和接口名称不变：
+ * UART_PORT1      = E220（PB10/PB11，硬件 UART4）
+ * UART_PORT2      = K210（PB4/PB5，硬件 UART1）
+ * UART_PORT_DEBUG = 外接 USB-TTL（PC6 TX、PC7 RX，硬件 UART3）
  */
 typedef enum {
     UART_PORT1 = 0,
