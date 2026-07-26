@@ -11,6 +11,8 @@
 
 typedef enum {
     OLED_UI_LINE_CAL_READY = 0,
+    OLED_UI_LINE_CAL_SENSOR_OFFLINE,
+    OLED_UI_LINE_CAL_WAIT_SAMPLES,
     OLED_UI_LINE_CAL_WHITE_CAPTURED,
     OLED_UI_LINE_CAL_BLACK_CAPTURED,
     OLED_UI_LINE_CAL_RESULT
@@ -105,6 +107,19 @@ static void OledUi_ShowLineCalibration(void)
     Drv_OledI2c_DrawRect(0U, 0U, 128U, 64U, DRV_OLED_COLOR_ON);
 
     switch (s_oled_line_cal_page) {
+        case OLED_UI_LINE_CAL_SENSOR_OFFLINE:
+            Drv_OledI2c_DrawString5x7(4U, 2U, "GRAY OFFLINE", DRV_OLED_COLOR_ON);
+            Drv_OledI2c_DrawString5x7(4U, 14U, "WAIT VALID DATA", DRV_OLED_COLOR_ON);
+            Drv_OledI2c_DrawString5x7(4U, 26U, "PRESS KEY1 AGAIN", DRV_OLED_COLOR_ON);
+            break;
+
+        case OLED_UI_LINE_CAL_WAIT_SAMPLES:
+            Drv_OledI2c_DrawString5x7(4U, 2U, "DATA INCOMPLETE", DRV_OLED_COLOR_ON);
+            Drv_OledI2c_DrawString5x7(4U, 14U, "KEY1: WHITE", DRV_OLED_COLOR_ON);
+            Drv_OledI2c_DrawString5x7(4U, 26U, "KEY2: BLACK", DRV_OLED_COLOR_ON);
+            Drv_OledI2c_DrawString5x7(4U, 38U, "THEN KEY3", DRV_OLED_COLOR_ON);
+            break;
+
         case OLED_UI_LINE_CAL_WHITE_CAPTURED:
             Drv_OledI2c_DrawString5x7(4U, 2U, "WHITE CAPTURED", DRV_OLED_COLOR_ON);
             Drv_OledI2c_DrawString5x7(4U, 14U, "MOVE TO BLACK", DRV_OLED_COLOR_ON);
@@ -348,6 +363,24 @@ void OledUi_LineCalibrationBegin(void)
     s_oled_route_test_active = 0U;
     s_oled_line_cal_active = 1U;
     s_oled_line_cal_page = OLED_UI_LINE_CAL_READY;
+#endif
+}
+
+void OledUi_LineCalibrationSensorOffline(void)
+{
+#if OLED_UI_ENABLE
+    s_oled_route_test_active = 0U;
+    s_oled_line_cal_active = 1U;
+    s_oled_line_cal_page = OLED_UI_LINE_CAL_SENSOR_OFFLINE;
+#endif
+}
+
+void OledUi_LineCalibrationWaitSamples(void)
+{
+#if OLED_UI_ENABLE
+    s_oled_route_test_active = 0U;
+    s_oled_line_cal_active = 1U;
+    s_oled_line_cal_page = OLED_UI_LINE_CAL_WAIT_SAMPLES;
 #endif
 }
 

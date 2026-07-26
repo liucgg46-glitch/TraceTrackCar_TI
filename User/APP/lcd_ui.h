@@ -18,6 +18,8 @@ void LcdUi_ShowDashboard(void);
 void LcdUi_ChassisTestBegin(void);
 void LcdUi_RouteTestBegin(void);
 void LcdUi_LineCalibrationBegin(void);
+void LcdUi_LineCalibrationSensorOffline(void);
+void LcdUi_LineCalibrationWaitSamples(void);
 void LcdUi_LineCalibrationWhiteCaptured(void);
 void LcdUi_LineCalibrationBlackCaptured(void);
 void LcdUi_LineCalibrationShowResult(const uint16_t *threshold, uint8_t count);

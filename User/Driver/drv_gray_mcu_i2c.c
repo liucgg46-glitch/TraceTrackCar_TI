@@ -833,9 +833,12 @@ uint8_t Drv_GrayMcu_IsOnline(void)
 {
     uint32_t now;
 
-    if ((s_gray.online == 0U) ||
-        (s_gray.valid == 0U) ||
-        (s_gray.initialized == 0U)) {
+    /*
+     * 上层关心的是是否存在足够新的有效样本。共享总线上的短暂NACK
+     * 会让器件状态机进入重试步骤，但不应立即废弃刚刚成功取得的数据。
+     * 真正断线时last_update_ms停止更新，超过时限后仍会可靠离线。
+     */
+    if (s_gray.valid == 0U) {
         return 0U;
     }
 

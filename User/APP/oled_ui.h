@@ -17,6 +17,8 @@ void OledUi_ShowDashboard(void);
 void OledUi_Update(void);
 void OledUi_RouteTestBegin(void);
 void OledUi_LineCalibrationBegin(void);
+void OledUi_LineCalibrationSensorOffline(void);
+void OledUi_LineCalibrationWaitSamples(void);
 void OledUi_LineCalibrationWhiteCaptured(void);
 void OledUi_LineCalibrationBlackCaptured(void);
 void OledUi_LineCalibrationShowResult(const uint16_t *threshold, uint8_t count);

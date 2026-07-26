@@ -25,6 +25,8 @@ typedef enum {
 
 typedef enum {
     LCD_UI_LINE_CAL_READY = 0,
+    LCD_UI_LINE_CAL_SENSOR_OFFLINE,
+    LCD_UI_LINE_CAL_WAIT_SAMPLES,
     LCD_UI_LINE_CAL_WHITE_CAPTURED,
     LCD_UI_LINE_CAL_BLACK_CAPTURED,
     LCD_UI_LINE_CAL_RESULT
@@ -403,6 +405,19 @@ static void LcdUi_BuildLineCalibrationDashboard(void)
     }
 
     switch (s_lcd_line_cal_page) {
+        case LCD_UI_LINE_CAL_SENSOR_OFFLINE:
+            LcdUi_CopyDashboardLine(0U, "GRAY SENSOR OFFLINE");
+            LcdUi_CopyDashboardLine(1U, "WAIT VALID DATA");
+            LcdUi_CopyDashboardLine(2U, "THEN PRESS KEY1");
+            break;
+
+        case LCD_UI_LINE_CAL_WAIT_SAMPLES:
+            LcdUi_CopyDashboardLine(0U, "CAL DATA INCOMPLETE");
+            LcdUi_CopyDashboardLine(1U, "KEY1: WHITE FIRST");
+            LcdUi_CopyDashboardLine(2U, "KEY2: BLACK NEXT");
+            LcdUi_CopyDashboardLine(3U, "KEY3: CALCULATE");
+            break;
+
         case LCD_UI_LINE_CAL_WHITE_CAPTURED:
             LcdUi_CopyDashboardLine(0U, "WHITE CAPTURED");
             LcdUi_CopyDashboardLine(1U, "MOVE TO BLACK");
@@ -639,6 +654,28 @@ void LcdUi_LineCalibrationBegin(void)
     s_lcd_route_test_active = 0U;
     s_lcd_line_cal_active = 1U;
     s_lcd_line_cal_page = LCD_UI_LINE_CAL_READY;
+    s_lcd_dashboard_dirty = 1U;
+#endif
+}
+
+void LcdUi_LineCalibrationSensorOffline(void)
+{
+#if LCD_UI_ENABLE
+    s_lcd_chassis_test_active = 0U;
+    s_lcd_route_test_active = 0U;
+    s_lcd_line_cal_active = 1U;
+    s_lcd_line_cal_page = LCD_UI_LINE_CAL_SENSOR_OFFLINE;
+    s_lcd_dashboard_dirty = 1U;
+#endif
+}
+
+void LcdUi_LineCalibrationWaitSamples(void)
+{
+#if LCD_UI_ENABLE
+    s_lcd_chassis_test_active = 0U;
+    s_lcd_route_test_active = 0U;
+    s_lcd_line_cal_active = 1U;
+    s_lcd_line_cal_page = LCD_UI_LINE_CAL_WAIT_SAMPLES;
     s_lcd_dashboard_dirty = 1U;
 #endif
 }

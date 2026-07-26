@@ -1720,6 +1720,62 @@ static void Test_Line_Print(void)
         (void)BSP_UART_WriteFrame(DEBUG_UART_PORT, (const uint8_t *)buf, (uint16_t)n);
     }
 
+    /*
+     * 传感器核心数据必须先于详细I2C诊断进入UART环形缓冲区。
+     * 否则一次日志超过512字节时，较长的RAW帧会因空间不足被丢弃。
+     */
+    n = sprintf(buf,
+                "RX8  %02X %02X %02X %02X %02X %02X %02X %02X "
+                "age=%lu link/init=%u/%u\r\n",
+                (unsigned int)mcu.rx[0], (unsigned int)mcu.rx[1],
+                (unsigned int)mcu.rx[2], (unsigned int)mcu.rx[3],
+                (unsigned int)mcu.rx[4], (unsigned int)mcu.rx[5],
+                (unsigned int)mcu.rx[6], (unsigned int)mcu.rx[7],
+                (unsigned long)(BSP_GET_TICK() - mcu.last_update_ms),
+                (unsigned int)mcu.online,
+                (unsigned int)mcu.initialized);
+
+    if ((n > 0) && (n < (int)sizeof(buf))) {
+        (void)BSP_UART_WriteFrame(DEBUG_UART_PORT,
+                                  (const uint8_t *)buf,
+                                  (uint16_t)n);
+    }
+
+    n = sprintf(buf,
+                "RAW  %4u %4u %4u %4u %4u %4u %4u %4u | FILT %4u %4u %4u %4u %4u %4u %4u %4u\r\n",
+                (unsigned int)sensor.raw[0], (unsigned int)sensor.raw[1],
+                (unsigned int)sensor.raw[2], (unsigned int)sensor.raw[3],
+                (unsigned int)sensor.raw[4], (unsigned int)sensor.raw[5],
+                (unsigned int)sensor.raw[6], (unsigned int)sensor.raw[7],
+                (unsigned int)sensor.filt[0], (unsigned int)sensor.filt[1],
+                (unsigned int)sensor.filt[2], (unsigned int)sensor.filt[3],
+                (unsigned int)sensor.filt[4], (unsigned int)sensor.filt[5],
+                (unsigned int)sensor.filt[6], (unsigned int)sensor.filt[7]);
+
+    if ((n > 0) && (n < (int)sizeof(buf))) {
+        (void)BSP_UART_WriteFrame(DEBUG_UART_PORT,
+                                  (const uint8_t *)buf,
+                                  (uint16_t)n);
+    }
+
+    Test_Line_PrintThreshold();
+
+    n = sprintf(buf,
+                "LINE st=%d type=%s mask=0x%02X cnt=%d err=%d out(v=%d,t=%d)\r\n",
+                (int)info.state,
+                LineTypeName(info.detect.type),
+                (unsigned int)info.detect.black_mask,
+                (int)info.detect.black_count,
+                (int)info.detect.error_x1000,
+                (int)info.output.linear_cps,
+                (int)info.output.turn_cps);
+
+    if ((n > 0) && (n < (int)sizeof(buf))) {
+        (void)BSP_UART_WriteFrame(DEBUG_UART_PORT,
+                                  (const uint8_t *)buf,
+                                  (uint16_t)n);
+    }
+
     n = sprintf(buf,
                 "I2C s=%u a=0x%02X tx=%u/%u rx=%u rd=%u sr1=0x%04X sr2=0x%04X | "
                 "ERR src=%u s=%u a=0x%02X tx=%u/%u rx=%u sr1=0x%04X sr2=0x%04X n=%lu\r\n",
@@ -1791,36 +1847,24 @@ static void Test_Line_Print(void)
                                   (const uint8_t *)buf,
                                   (uint16_t)n);
     }
-    n = sprintf(buf,
-                "RAW  %4u %4u %4u %4u %4u %4u %4u %4u | FILT %4u %4u %4u %4u %4u %4u %4u %4u\r\n",
-                (unsigned int)sensor.raw[0], (unsigned int)sensor.raw[1],
-                (unsigned int)sensor.raw[2], (unsigned int)sensor.raw[3],
-                (unsigned int)sensor.raw[4], (unsigned int)sensor.raw[5],
-                (unsigned int)sensor.raw[6], (unsigned int)sensor.raw[7],
-                (unsigned int)sensor.filt[0], (unsigned int)sensor.filt[1],
-                (unsigned int)sensor.filt[2], (unsigned int)sensor.filt[3],
-                (unsigned int)sensor.filt[4], (unsigned int)sensor.filt[5],
-                (unsigned int)sensor.filt[6], (unsigned int)sensor.filt[7]);
-
-    if (n > 0 && n < (int)sizeof(buf)) {
-        (void)BSP_UART_WriteFrame(DEBUG_UART_PORT, (const uint8_t *)buf, (uint16_t)n);
-    }
-
-    Test_Line_PrintThreshold();
 
     n = sprintf(buf,
-                "LINE st=%d type=%s mask=0x%02X cnt=%d err=%d out(v=%d,t=%d)\r\n",
-                (int)info.state,
-                LineTypeName(info.detect.type),
-                (unsigned int)info.detect.black_mask,
-                (int)info.detect.black_count,
-                (int)info.detect.error_x1000,
-                (int)info.output.linear_cps,
-                (int)info.output.turn_cps);
+                "I2CR mcr=0x%08lX msa=0x%08lX ctr=0x%08lX "
+                "fifo=0x%08lX ris=0x%08lX im=0x%08lX drx=%u\r\n",
+                (unsigned long)i2c.controller_config,
+                (unsigned long)i2c.target_address,
+                (unsigned long)i2c.controller_control,
+                (unsigned long)i2c.fifo_status,
+                (unsigned long)i2c.raw_interrupts,
+                (unsigned long)i2c.enabled_interrupts,
+                (unsigned int)i2c.dma_rx_remaining);
 
-    if (n > 0 && n < (int)sizeof(buf)) {
-        (void)BSP_UART_WriteFrame(DEBUG_UART_PORT, (const uint8_t *)buf, (uint16_t)n);
+    if ((n > 0) && (n < (int)sizeof(buf))) {
+        (void)BSP_UART_WriteFrame(DEBUG_UART_PORT,
+                                  (const uint8_t *)buf,
+                                  (uint16_t)n);
     }
+
 }
 
 void Test_LineCmd_Update(void)

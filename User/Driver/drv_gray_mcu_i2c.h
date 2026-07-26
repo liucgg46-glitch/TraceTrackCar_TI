@@ -65,7 +65,11 @@ extern "C" {
 #define DRV_GRAY_MCU_ERROR_BACKOFF_MS            100U
 #define DRV_GRAY_MCU_REBOOT_WAIT_MS              20U
 #define DRV_GRAY_MCU_RUNTIME_FAIL_LIMIT           5U
-#define DRV_GRAY_MCU_STALE_TIMEOUT_MS            100U
+/*
+ * OLED整屏刷新和其他I2C设备恢复时会短暂占用共享总线。
+ * 500 ms内最近一次有效样本仍可供显示和人工校准使用。
+ */
+#define DRV_GRAY_MCU_STALE_TIMEOUT_MS            500U
 
 #define DRV_GRAY_MCU_SCALE_TO_12BIT              1U
 #define DRV_GRAY_MCU_FILTER_SHIFT                0U

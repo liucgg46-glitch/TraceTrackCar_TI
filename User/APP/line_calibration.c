@@ -13,7 +13,7 @@ static uint8_t s_line_cal_black_ready;
 
 static void LineCalibration_Send(const char *message, uint16_t length)
 {
-    (void)BSP_UART_WriteFrame(UART_PORT1,
+    (void)BSP_UART_WriteFrame(DEBUG_UART_PORT,
                               (const uint8_t *)message,
                               length);
 }
@@ -103,6 +103,8 @@ void LineCalibration_Update(void)
             static const char message[] =
                 "GRAY CAL WHITE FAILED: SENSOR OFFLINE\r\n";
             LineCalibration_Send(message, (uint16_t)(sizeof(message) - 1U));
+            LcdUi_LineCalibrationSensorOffline();
+            OledUi_LineCalibrationSensorOffline();
         } else {
             LineDetect_CaptureWhite(sample);
             s_line_cal_white_ready = 1U;
@@ -120,6 +122,8 @@ void LineCalibration_Update(void)
             static const char message[] =
                 "GRAY CAL BLACK FAILED: SENSOR OFFLINE\r\n";
             LineCalibration_Send(message, (uint16_t)(sizeof(message) - 1U));
+            LcdUi_LineCalibrationSensorOffline();
+            OledUi_LineCalibrationSensorOffline();
         } else {
             LineDetect_CaptureBlack(sample);
             s_line_cal_black_ready = 1U;
@@ -137,6 +141,8 @@ void LineCalibration_Update(void)
             static const char message[] =
                 "GRAY CAL WAIT: PRESS KEY1 AND KEY2 FIRST\r\n";
             LineCalibration_Send(message, (uint16_t)(sizeof(message) - 1U));
+            LcdUi_LineCalibrationWaitSamples();
+            OledUi_LineCalibrationWaitSamples();
         } else {
             static const char message[] = "GRAY CAL THRESHOLDS READY\r\n";
 
