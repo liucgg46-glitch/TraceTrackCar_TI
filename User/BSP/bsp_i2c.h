@@ -48,16 +48,19 @@ typedef struct {
     uint8_t rx_first;
     uint16_t current_status;
     uint16_t line_state;
+    uint16_t status_queue;
     uint16_t status_tx_done;
     uint16_t status_repeat_wait;
     uint16_t status_repeat_before;
     uint16_t status_repeat_after;
     uint16_t status_rx_done;
+    uint32_t queue_count;
     uint32_t tx_done_count;
     uint32_t repeat_wait_count;
     uint32_t repeat_start_count;
     uint32_t rx_done_count;
     uint32_t nack_count;
+    uint32_t arb_lost_count;
     uint32_t timeout_count;
 } BSP_I2C_Debug_t;
 

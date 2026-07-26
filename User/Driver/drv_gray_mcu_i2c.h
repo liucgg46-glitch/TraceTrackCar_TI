@@ -41,7 +41,7 @@ extern "C" {
 #define DRV_GRAY_MCU_DEFAULT_ADDR_7BIT           \
     ((uint8_t)(0x4CU | ((DRV_GRAY_MCU_ADDR_AD1 & 0x01U) << 1U) | \
                        (DRV_GRAY_MCU_ADDR_AD0 & 0x01U)))
-#define DRV_GRAY_MCU_AUTO_ADDR_SCAN              1U
+#define DRV_GRAY_MCU_AUTO_ADDR_SCAN              0U
 #define DRV_GRAY_MCU_UNLOCK_AFTER_PING_FAILS     20U
 
 #define DRV_GRAY_MCU_CMD_PING                    0xAAU

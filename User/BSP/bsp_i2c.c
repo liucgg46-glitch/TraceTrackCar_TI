@@ -35,6 +35,9 @@ static I2C_Runtime_t s_i2c_rt[I2C_BUS_COUNT];
 
 #define I2C_REPEAT_START_DIAG_FIX_V2 1U
 #define I2C_REPEAT_START_RUNTIME_FIX_V3 1U
+#define I2C_STARTUP_STALE_BUS_FIX_V4_1 1U
+#define I2C_BUSBSY_PREFLIGHT_FIX_V5 1U
+#define I2C_ONE_BYTE_TX_FIFO_FIX_V6 1U
 
 #define I2C_DIAG_EVENT_NONE          0U
 #define I2C_DIAG_EVENT_TX_DONE       1U
@@ -44,6 +47,8 @@ static I2C_Runtime_t s_i2c_rt[I2C_BUS_COUNT];
 #define I2C_DIAG_EVENT_NACK          5U
 #define I2C_DIAG_EVENT_ARB_LOST      6U
 #define I2C_DIAG_EVENT_TIMEOUT       7U
+#define I2C_DIAG_EVENT_QUEUE         8U
+#define I2C_DIAG_EVENT_TX_START      9U
 
 static void I2C_StartRepeatedRead(void);
 
@@ -82,7 +87,7 @@ static void I2C_Abort(void)
 
     /*
      * 写阶段未发送STOP时，异常退出必须清除Controller ACTIVE，
-     * 否则BUSBSY和SCL可能一直保持。
+     * 否则BUSBSY和SCL/SDA状态可能一直保持。
      */
     DL_I2C_disableController(I2C_SENSOR_INST);
     DL_I2C_resetControllerTransfer(I2C_SENSOR_INST);
@@ -93,6 +98,124 @@ static void I2C_Abort(void)
     DL_I2C_enableController(I2C_SENSOR_INST);
 
     s_i2c_rt[I2C_BUS1].repeat_read_pending = 0U;
+}
+
+#define I2C_STALE_BUS_RECOVERY_RETRY_MS 20U
+#define I2C_DIAG_EVENT_RECOVERY_OK      11U
+#define I2C_DIAG_EVENT_RECOVERY_FAILED  12U
+
+static uint32_t s_i2c_recovery_last_tick[I2C_BUS_COUNT];
+static uint8_t s_i2c_recovery_tick_valid[I2C_BUS_COUNT];
+
+static void I2C_ControllerSettleDelay(void)
+{
+    volatile uint32_t delay_count = 256U;
+
+    /*
+     * ACTIVE重新置位后至少等待一个I2C时钟周期。
+     * 32 MHz下256个空循环远大于400 kHz的一周期。
+     */
+    while (delay_count > 0U) {
+        __NOP();
+        delay_count--;
+    }
+}
+
+static uint8_t I2C_TryRecoverStaleBus(I2C_Bus_t bus,
+                                      uint8_t force_recovery)
+{
+    I2C_Runtime_t *rt;
+    uint32_t now_ms;
+    uint32_t status_before;
+    uint32_t status_after;
+    uint16_t line_before;
+    uint16_t line_after;
+
+    if (bus >= I2C_BUS_COUNT) {
+        return 0U;
+    }
+
+    rt = &s_i2c_rt[bus];
+    if (rt->busy != 0U) {
+        return 0U;
+    }
+
+    status_before =
+        DL_I2C_getControllerStatus(I2C_SENSOR_INST);
+    line_before = I2C_GetLineState();
+
+    if (((status_before &
+          DL_I2C_CONTROLLER_STATUS_BUSY_BUS) == 0U) &&
+        ((status_before &
+          DL_I2C_CONTROLLER_STATUS_BUSY) == 0U)) {
+        return 1U;
+    }
+
+    /*
+     * 正在执行真实事务时绝不能复位Controller。
+     * 只处理软件状态空闲、硬件BUSY已清零但BUSBSY仍残留的状态。
+     */
+    if ((status_before &
+         DL_I2C_CONTROLLER_STATUS_BUSY) != 0U) {
+        return 0U;
+    }
+
+    if (((status_before &
+          DL_I2C_CONTROLLER_STATUS_IDLE) == 0U) &&
+        (force_recovery == 0U)) {
+        return 0U;
+    }
+
+    now_ms = BSP_GET_TICK();
+    if ((force_recovery == 0U) &&
+        (s_i2c_recovery_tick_valid[bus] != 0U) &&
+        ((uint32_t)(now_ms -
+                    s_i2c_recovery_last_tick[bus]) <
+         I2C_STALE_BUS_RECOVERY_RETRY_MS)) {
+        return 0U;
+    }
+
+    s_i2c_recovery_last_tick[bus] = now_ms;
+    s_i2c_recovery_tick_valid[bus] = 1U;
+
+    NVIC_DisableIRQ(I2C_SENSOR_INST_INT_IRQN);
+    I2C_Abort();
+    I2C_ControllerSettleDelay();
+    NVIC_ClearPendingIRQ(I2C_SENSOR_INST_INT_IRQN);
+    NVIC_EnableIRQ(I2C_SENSOR_INST_INT_IRQN);
+
+    status_after =
+        DL_I2C_getControllerStatus(I2C_SENSOR_INST);
+    line_after = I2C_GetLineState();
+
+    /*
+     * 复用已有诊断字段保存恢复前后现场，不增加新的头文件成员。
+     * I2CS中的rb/ra显示恢复前后状态；I2CD evt=11表示成功，
+     * evt=12表示恢复后总线仍忙。
+     */
+    rt->debug.status_repeat_before =
+        (uint16_t)status_before;
+    rt->debug.status_repeat_after =
+        (uint16_t)status_after;
+    rt->debug.current_status =
+        (uint16_t)status_after;
+    rt->debug.line_state = line_after;
+    rt->debug.error_sr1 =
+        (uint16_t)status_before;
+    rt->debug.error_sr2 = line_before;
+
+    if (((status_after &
+          DL_I2C_CONTROLLER_STATUS_BUSY_BUS) == 0U) &&
+        ((status_after &
+          DL_I2C_CONTROLLER_STATUS_BUSY) == 0U)) {
+        rt->debug.last_event =
+            I2C_DIAG_EVENT_RECOVERY_OK;
+        return 1U;
+    }
+
+    rt->debug.last_event =
+        I2C_DIAG_EVENT_RECOVERY_FAILED;
+    return 0U;
 }
 
 static BSP_Status_t I2C_WaitStatus(uint32_t mask, uint8_t wait_set)
@@ -206,13 +329,25 @@ static BSP_Status_t I2C_ReadPart(uint8_t dev_addr,
 
 void BSP_I2C_Init(I2C_Bus_t bus)
 {
-    if (bus < I2C_BUS_COUNT) {
-        memset(&s_i2c_rt[bus], 0, sizeof(s_i2c_rt[bus]));
-        DL_DMA_disableChannel(DMA, DMA_CH2_CHAN_ID);
-        DL_DMA_disableChannel(DMA, DMA_CH3_CHAN_ID);
-        NVIC_ClearPendingIRQ(I2C_SENSOR_INST_INT_IRQN);
-        NVIC_EnableIRQ(I2C_SENSOR_INST_INT_IRQN);
+    if (bus >= I2C_BUS_COUNT) {
+        return;
     }
+
+    memset(&s_i2c_rt[bus], 0, sizeof(s_i2c_rt[bus]));
+    s_i2c_recovery_last_tick[bus] = 0U;
+    s_i2c_recovery_tick_valid[bus] = 0U;
+
+    DL_DMA_disableChannel(DMA, DMA_CH2_CHAN_ID);
+    DL_DMA_disableChannel(DMA, DMA_CH3_CHAN_ID);
+
+    NVIC_DisableIRQ(I2C_SENSOR_INST_INT_IRQN);
+    NVIC_ClearPendingIRQ(I2C_SENSOR_INST_INT_IRQN);
+    NVIC_EnableIRQ(I2C_SENSOR_INST_INT_IRQN);
+
+    /*
+     * 不在初始化阶段根据BUSBSY快照复位Controller。
+     * OLED实测可以正常异步发送，说明公共I2C硬件链路可用。
+     */
 }
 
 void BSP_I2C_InitAll(void)
@@ -279,8 +414,8 @@ static BSP_Status_t I2C_Probe(uint8_t dev_addr)
     }
 
     controller_status = DL_I2C_getControllerStatus(I2C_SENSOR_INST);
-    if (((controller_status & DL_I2C_CONTROLLER_STATUS_IDLE) == 0U) ||
-        ((controller_status & DL_I2C_CONTROLLER_STATUS_BUSY_BUS) != 0U)) {
+    if (((controller_status & DL_I2C_CONTROLLER_STATUS_BUSY) != 0U) ||
+        ((controller_status & DL_I2C_CONTROLLER_STATUS_IDLE) == 0U)) {
         return BSP_BUSY;
     }
 
@@ -381,9 +516,11 @@ BSP_Status_t BSP_I2C_ScanBus(I2C_Bus_t bus,
         return BSP_BUSY;
     }
 
+
+
     controller_status = DL_I2C_getControllerStatus(I2C_SENSOR_INST);
-    if (((controller_status & DL_I2C_CONTROLLER_STATUS_IDLE) == 0U) ||
-        ((controller_status & DL_I2C_CONTROLLER_STATUS_BUSY_BUS) != 0U)) {
+    if (((controller_status & DL_I2C_CONTROLLER_STATUS_BUSY) != 0U) ||
+        ((controller_status & DL_I2C_CONTROLLER_STATUS_IDLE) == 0U)) {
         return BSP_BUSY;
     }
 
@@ -432,6 +569,7 @@ static BSP_Status_t I2C_Queue(I2C_Bus_t bus,
     I2C_Runtime_t *rt;
     uint32_t key;
     uint32_t controller_status;
+    uint16_t fifo_written;
 
     if ((bus >= I2C_BUS_COUNT) || (dev_addr > 0x7FU) ||
         (tx_len > I2C_TX_COPY_BUF_LEN) ||
@@ -440,74 +578,154 @@ static BSP_Status_t I2C_Queue(I2C_Bus_t bus,
         return BSP_PARAM;
     }
 
-    controller_status = DL_I2C_getControllerStatus(I2C_SENSOR_INST);
-    if ((controller_status & DL_I2C_CONTROLLER_STATUS_IDLE) == 0U) {
+    rt = &s_i2c_rt[bus];
+    if (rt->busy != 0U) {
         return BSP_BUSY;
     }
 
-    rt = &s_i2c_rt[bus];
+    controller_status =
+        DL_I2C_getControllerStatus(I2C_SENSOR_INST);
+
+    /*
+     * 不使用BUSBSY作为排队硬门槛。
+     * 只要Controller FSM空闲，就允许实际启动事务。
+     */
+    if (((controller_status &
+          DL_I2C_CONTROLLER_STATUS_BUSY) != 0U) ||
+        ((controller_status &
+          DL_I2C_CONTROLLER_STATUS_IDLE) == 0U)) {
+        return BSP_BUSY;
+    }
+
     key = BSP_EnterCritical();
     if (rt->busy != 0U) {
         BSP_ExitCritical(key);
         return BSP_BUSY;
     }
+
     rt->busy = 1U;
+    rt->completion_pending = 0U;
+    rt->completion_status = BSP_BUSY;
+    rt->repeat_read_pending = 0U;
+    rt->phase = I2C_PHASE_IDLE;
     rt->op = op;
     rt->dev_addr = dev_addr;
     rt->tx_len = tx_len;
     rt->rx_buf = rx_buf;
     rt->rx_len = rx_len;
     rt->callback = callback;
-    rt->completion_pending = 0U;
-    rt->completion_status = BSP_BUSY;
-    rt->repeat_read_pending = 0U;
-    rt->phase = I2C_PHASE_IDLE;
+
     if (tx_len != 0U) {
         memcpy(rt->tx_copy, tx_data, tx_len);
     }
+
     rt->debug.state = (uint8_t)op;
     rt->debug.dev_addr = dev_addr;
     rt->debug.tx_len = tx_len;
+    rt->debug.tx_pos = 0U;
     rt->debug.rx_len = rx_len;
     rt->debug.need_read = (rx_len != 0U) ? 1U : 0U;
     rt->debug.start_tick = BSP_GET_TICK();
-    rt->debug.phase = (uint8_t)I2C_PHASE_IDLE;
-    rt->debug.repeat_read_pending = 0U;
-    rt->debug.last_event = I2C_DIAG_EVENT_NONE;
-    rt->debug.last_iidx = (uint8_t)DL_I2C_IIDX_NO_INT;
-    rt->debug.current_status = (uint16_t)controller_status;
-    rt->debug.line_state = I2C_GetLineState();
+    rt->debug.tx_first =
+        (tx_len != 0U) ? rt->tx_copy[0] : 0U;
+    rt->debug.rx_first = 0U;
+    rt->debug.status_queue =
+        (uint16_t)controller_status;
+    rt->debug.queue_count++;
+
+    I2C_RecordDebugEvent(
+        rt,
+        I2C_DIAG_EVENT_QUEUE,
+        (uint32_t)DL_I2C_IIDX_NO_INT);
+
     BSP_ExitCritical(key);
 
     if (op == I2C_ASYNC_READ) {
         DL_DMA_disableChannel(DMA, DMA_CH3_CHAN_ID);
         DL_I2C_flushControllerRXFIFO(I2C_SENSOR_INST);
-        DL_DMA_setSrcAddr(DMA, DMA_CH3_CHAN_ID,
+        DL_DMA_setSrcAddr(
+            DMA,
+            DMA_CH3_CHAN_ID,
             (uint32_t)&I2C_SENSOR_INST->MASTER.MRXDATA);
         DL_DMA_setDestAddr(
-            DMA, DMA_CH3_CHAN_ID, (uint32_t)rt->rx_buf);
-        DL_DMA_setTransferSize(DMA, DMA_CH3_CHAN_ID, rt->rx_len);
+            DMA,
+            DMA_CH3_CHAN_ID,
+            (uint32_t)rt->rx_buf);
+        DL_DMA_setTransferSize(
+            DMA,
+            DMA_CH3_CHAN_ID,
+            rt->rx_len);
+
         rt->phase = I2C_PHASE_RX;
         DL_DMA_enableChannel(DMA, DMA_CH3_CHAN_ID);
+
+        I2C_RecordDebugEvent(
+            rt,
+            I2C_DIAG_EVENT_RX_START,
+            (uint32_t)DL_I2C_IIDX_NO_INT);
+
         DL_I2C_startControllerTransferAdvanced(
-            I2C_SENSOR_INST, rt->dev_addr,
-            DL_I2C_CONTROLLER_DIRECTION_RX, rt->rx_len,
+            I2C_SENSOR_INST,
+            rt->dev_addr,
+            DL_I2C_CONTROLLER_DIRECTION_RX,
+            rt->rx_len,
             DL_I2C_CONTROLLER_START_ENABLE,
             DL_I2C_CONTROLLER_STOP_ENABLE,
             DL_I2C_CONTROLLER_ACK_ENABLE);
     } else {
         DL_DMA_disableChannel(DMA, DMA_CH2_CHAN_ID);
         DL_I2C_flushControllerTXFIFO(I2C_SENSOR_INST);
-        DL_DMA_setSrcAddr(
-            DMA, DMA_CH2_CHAN_ID, (uint32_t)rt->tx_copy);
-        DL_DMA_setDestAddr(DMA, DMA_CH2_CHAN_ID,
-            (uint32_t)&I2C_SENSOR_INST->MASTER.MTXDATA);
-        DL_DMA_setTransferSize(DMA, DMA_CH2_CHAN_ID, rt->tx_len);
+
+        /*
+         * MSPM0的TX DMA事件由TX FIFO阈值触发。
+         * 灰度ping/固件/0xB0命令只有1字节，空FIFO启动后可能没有及时
+         * 获得DMA数据，表现为TX_START后永远没有TX_DONE。
+         *
+         * 1字节事务直接预装FIFO；2字节及以上继续使用原DMA路径，
+         * 因此OLED初始化和页面数据发送路径保持不变。
+         */
+        if (rt->tx_len == 1U) {
+            fifo_written = DL_I2C_fillControllerTXFIFO(
+                I2C_SENSOR_INST,
+                rt->tx_copy,
+                1U);
+
+            if (fifo_written != 1U) {
+                I2C_Abort();
+                rt->busy = 0U;
+                rt->op = I2C_ASYNC_NONE;
+                rt->phase = I2C_PHASE_IDLE;
+                rt->callback = 0;
+                return BSP_ERROR;
+            }
+        } else {
+            DL_DMA_setSrcAddr(
+                DMA,
+                DMA_CH2_CHAN_ID,
+                (uint32_t)rt->tx_copy);
+            DL_DMA_setDestAddr(
+                DMA,
+                DMA_CH2_CHAN_ID,
+                (uint32_t)&I2C_SENSOR_INST->MASTER.MTXDATA);
+            DL_DMA_setTransferSize(
+                DMA,
+                DMA_CH2_CHAN_ID,
+                rt->tx_len);
+            DL_DMA_enableChannel(DMA, DMA_CH2_CHAN_ID);
+        }
+
         rt->phase = I2C_PHASE_TX;
-        DL_DMA_enableChannel(DMA, DMA_CH2_CHAN_ID);
+
+        I2C_RecordDebugEvent(
+            rt,
+            I2C_DIAG_EVENT_TX_START,
+            (uint32_t)DL_I2C_IIDX_NO_INT);
+
         DL_I2C_startControllerTransferAdvanced(
-            I2C_SENSOR_INST, rt->dev_addr,
-            DL_I2C_CONTROLLER_DIRECTION_TX, rt->tx_len,
+            I2C_SENSOR_INST,
+            rt->dev_addr,
+            DL_I2C_CONTROLLER_DIRECTION_TX,
+            rt->tx_len,
             DL_I2C_CONTROLLER_START_ENABLE,
             (op == I2C_ASYNC_WRITE) ?
                 DL_I2C_CONTROLLER_STOP_ENABLE :
@@ -545,12 +763,26 @@ BSP_Status_t BSP_I2C_MasterWriteRead_DMA_Async(
 
 uint8_t BSP_I2C_IsBusy(I2C_Bus_t bus)
 {
+    uint32_t status;
+
     if (bus >= I2C_BUS_COUNT) {
         return 0U;
     }
-    return (s_i2c_rt[bus].busy != 0U) ||
-           ((DL_I2C_getControllerStatus(I2C_SENSOR_INST) &
-             DL_I2C_CONTROLLER_STATUS_BUSY_BUS) != 0U) ? 1U : 0U;
+
+    if (s_i2c_rt[bus].busy != 0U) {
+        return 1U;
+    }
+
+    status = DL_I2C_getControllerStatus(I2C_SENSOR_INST);
+
+    /*
+     * BUSBSY是总线监视状态，可能在初始化或调试复位后残留。
+     * 单主机工程只用软件busy和Controller FSM BUSY判断是否可排队。
+     * 若总线确实无法开始，事务会由100 ms超时和I2C_Abort安全退出。
+     */
+    return (((status & DL_I2C_CONTROLLER_STATUS_BUSY) != 0U) ||
+            ((status & DL_I2C_CONTROLLER_STATUS_IDLE) == 0U)) ?
+           1U : 0U;
 }
 
 BSP_Status_t BSP_I2C_GetDebug(I2C_Bus_t bus, BSP_I2C_Debug_t *debug)
@@ -745,6 +977,7 @@ static void I2C_HandleInterrupt(void)
         } else if (iidx ==
                    DL_I2C_IIDX_CONTROLLER_ARBITRATION_LOST) {
             if (rt->busy != 0U) {
+                rt->debug.arb_lost_count++;
                 I2C_RecordDebugEvent(
                     rt,
                     I2C_DIAG_EVENT_ARB_LOST,
