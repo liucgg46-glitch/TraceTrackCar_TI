@@ -49,6 +49,7 @@ static void Oled_AsyncCallback(I2C_Bus_t bus, int result)
     s_oled_async_done = 1U;
 }
 
+#if DRV_OLED_I2C_ENABLE != 0U
 static void Oled_DetectAddressOnInit(void)
 {
     uint8_t addr[8];
@@ -72,6 +73,7 @@ static void Oled_DetectAddressOnInit(void)
         }
     }
 }
+#endif
 
 static uint8_t Oled_FindNextDirtyPage(void)
 {

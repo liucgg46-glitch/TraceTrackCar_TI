@@ -9,6 +9,7 @@
 #include "line_detect.h"
 #include <stdio.h>
 
+#if OLED_UI_ENABLE
 typedef enum {
     OLED_UI_LINE_CAL_READY = 0,
     OLED_UI_LINE_CAL_SENSOR_OFFLINE,
@@ -67,6 +68,7 @@ static void OledUi_DrawRunBase(void)
     Drv_OledI2c_DrawRect(0U, 0U, 128U, 64U, DRV_OLED_COLOR_ON);
     Drv_OledI2c_Flush();
 }
+#endif
 
 void OledUi_ShowBoot(void)
 {
@@ -98,6 +100,7 @@ void OledUi_Init(void)
 #endif
 }
 
+#if OLED_UI_ENABLE
 static void OledUi_ShowLineCalibration(void)
 {
     uint8_t i;
@@ -229,6 +232,7 @@ static void OledUi_ShowRouteTest(void)
 
     Drv_OledI2c_Flush();
 }
+#endif
 
 void OledUi_ShowDashboard(void)
 {

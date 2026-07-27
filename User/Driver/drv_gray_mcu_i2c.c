@@ -198,10 +198,11 @@ static BSP_Status_t GrayMcu_StartCommandRead(GrayMcu_Op_t op,
     return BSP_BUSY;
 }
 
+#if DRV_GRAY_MCU_ANALOG_READ_METHOD == 2U
 static BSP_Status_t GrayMcu_StartReadOnly(GrayMcu_Op_t op,
-                                          Drv_GrayMcu_Phase_t phase,
-                                          uint8_t diagnostic_command,
-                                          uint8_t rx_len)
+                                         Drv_GrayMcu_Phase_t phase,
+                                         uint8_t diagnostic_command,
+                                         uint8_t rx_len)
 {
     BSP_Status_t ret;
 
@@ -243,6 +244,7 @@ static BSP_Status_t GrayMcu_StartReadOnly(GrayMcu_Op_t op,
 
     return BSP_BUSY;
 }
+#endif
 
 static BSP_Status_t GrayMcu_StartWrite2(GrayMcu_Op_t op,
                                         Drv_GrayMcu_Phase_t phase,

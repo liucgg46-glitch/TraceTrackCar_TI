@@ -89,10 +89,12 @@ BSP_Status_t BSP_PWM_SetDutyPermille(BSP_PWM_Id_t id, uint16_t permille)
         pulse = (period * permille) / 1000U;
         return BSP_PWM_SetCompare(id, (uint16_t)pulse);
     }
-
-    /* TIMA0 的 compare=LOAD 为 0%，compare=0 为 100%。 */
-    pulse = (period * (1000U - permille)) / 1000U;
-    return BSP_PWM_SetCompare(id, (uint16_t)pulse);
+	/*
+	 * 当前 TIMA0 PWM 输出的有效占空比与 compare 成正比：
+	 * compare=0 对应 0%，compare=LOAD 对应 100%。
+	 */
+	pulse = (period * permille) / 1000U;
+	return BSP_PWM_SetCompare(id, (uint16_t)pulse);
 }
 
 uint16_t BSP_PWM_GetPeriod(BSP_PWM_Id_t id)

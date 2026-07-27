@@ -14,7 +14,7 @@
 #endif
 #define CONTROL_CHASSIS_PWM_MAX_PERMILLE          800     /* 最大输出 ±800‰（80%占空比） */
 #define CONTROL_CHASSIS_TARGET_MAX_CPS            5000    /* 上层左右轮目标的安全限幅 */
-#define CONTROL_CHASSIS_FEEDFORWARD_FULL_SPEED_CPS 5000   /* 前馈标定：该速度对应最大PWM */
+#define CONTROL_CHASSIS_FEEDFORWARD_FULL_SPEED_CPS 15000   /* 前馈标定：该速度对应最大PWM */
 
 #if ((CONTROL_CHASSIS_SPEED_LOOP_ENABLE != 0U) && \
      (CONTROL_CHASSIS_SPEED_LOOP_ENABLE != 1U))

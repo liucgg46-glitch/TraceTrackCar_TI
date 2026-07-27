@@ -39,13 +39,12 @@ extern "C" {
 Task_t task_list[] = {                                                              \
     { AppDiagnostics_HeartbeatUpdate, 10U, 0U }, /* 运行心跳 */         \
     { AppTask_BSP_Background, 1U, 0U }, /* UART、总线和异步驱动后台 */        \
-    { Key_Update, 10U, 0U }, /* 按键扫描 */                             \
-    { Encoder_Update, 10U, 0U }, /* 必须先于底盘 */                       \
-    { Test_ChassisCmd_Update, 10U, 0U }, /* 按键速度命令 */               \
-    { Chassis_Update, 10U, 0U }, /* 前馈和速度 PI */                     \
-    { LCD_Update, 20U, 0U }, /* 底盘测试页面 */                           \
-    { Test_ChassisCmd_Log, 200U, 0U }, /* 完整闭环日志 */                 \
-	{ Test_MotorCmd_Log, 200U, 0U },  \
+    { Sensor_Update, 1U, 0U }, /* 灰度传感器采样 */                        \
+    { Encoder_Update, 10U, 0U }, /* 速度反馈 */                         \
+    { Test_LineCmd_Update, 10U, 0U }, /* 标定和启停命令 */                 \
+    { LineTrack_Update, 10U, 0U }, /* 循迹计算 */                       \
+    { Chassis_Update, 10U, 0U }, /* 底盘闭环 */                         \
+    { Test_LineCmd_Log, 200U, 0U }, /* 灰度和循迹日志 */                   \
 };                                                       \
 const uint8_t TASK_NUM =                                 \
     (uint8_t)(sizeof(task_list) / sizeof(task_list[0]))

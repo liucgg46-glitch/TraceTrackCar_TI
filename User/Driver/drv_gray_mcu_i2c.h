@@ -19,12 +19,9 @@ extern "C" {
  *   0xCF：归一化使能（固件 V3.6 及以上）；
  *   0xC1：固件版本。
  *
- * 连续采样采用手册 7.9 的“方法 2”：
- *   1. 初始化时只发送一次 0xB0，并产生 STOP；
- *   2. 运行中反复执行纯读事务，每次读取 8 字节。
- *
- * 这样不会在每一帧都重复发送 0xB0，也不会每一帧都使用 repeated START，
- * 更适合与 OLED 等设备共用一条 I2C 总线。
+ * 连续采样方式由 DRV_GRAY_MCU_ANALOG_READ_METHOD 选择。
+ * 当前使用手册 7.9 的“方法 1”：每帧发送 0xB0，随后用重复START读取8字节；
+ * BSP将写和读拆成两个硬件阶段，避免RD_ON_TXEMPTY异常后锁住共享总线。
  */
 
 #define DRV_GRAY_MCU_CHANNEL_NUM                 8U
