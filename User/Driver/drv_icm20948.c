@@ -13,6 +13,7 @@
 #define ICM20948_B0_LP_CONFIG                 0x05U
 #define ICM20948_B0_PWR_MGMT_1                0x06U
 #define ICM20948_B0_PWR_MGMT_2                0x07U
+#define ICM20948_B0_INT_ENABLE_1              0x11U
 #define ICM20948_B0_I2C_MST_STATUS            0x17U
 #define ICM20948_B0_INT_STATUS_1              0x1AU
 #define ICM20948_B0_ACCEL_XOUT_H              0x2DU
@@ -58,6 +59,7 @@
 #define ICM20948_LP_CONFIG_I2C_MST_CYCLE       0x40U
 #define ICM20948_PWR_DEVICE_RESET              0x80U
 #define ICM20948_DATA_READY_BIT                0x01U
+#define ICM20948_RAW_DATA_READY_ENABLE        0x01U
 #define ICM20948_I2C_SLV4_DONE                 0x40U
 #define ICM20948_I2C_SLV4_NACK                 0x10U
 #define ICM20948_I2C_SLV0_NACK                 0x01U
@@ -988,7 +990,9 @@ static BSP_Status_t ICM20948_ConfigAccelGyro(void)
                                     ICM20948_B2_GYRO_SMPLRT_DIV,
                                     (uint8_t)DRV_ICM20948_GYRO_SAMPLE_DIV);
     if (status != BSP_OK) return status;
-    status = ICM20948_WriteRegister(2U, ICM20948_B2_GYRO_CONFIG_1, gyro_config);
+    status = ICM20948_WriteRegister(2U,
+                                    ICM20948_B2_GYRO_CONFIG_1,
+                                    gyro_config);
     if (status != BSP_OK) return status;
 
     accel_div = (uint16_t)DRV_ICM20948_ACCEL_SAMPLE_DIV;
@@ -1000,7 +1004,18 @@ static BSP_Status_t ICM20948_ConfigAccelGyro(void)
                                     ICM20948_B2_ACCEL_SMPLRT_DIV_2,
                                     (uint8_t)(accel_div & 0xFFU));
     if (status != BSP_OK) return status;
-    return ICM20948_WriteRegister(2U, ICM20948_B2_ACCEL_CONFIG, accel_config);
+    status = ICM20948_WriteRegister(2U,
+                                    ICM20948_B2_ACCEL_CONFIG,
+                                    accel_config);
+    if (status != BSP_OK) return status;
+
+    /*
+     * 驱动以 INT_STATUS_1.RAW_DATA_0_RDY_INT 判断新样本。
+     * 显式使能 RAW_DATA_0_RDY，避免依赖芯片复位后的隐含状态。
+     */
+    return ICM20948_WriteRegister(0U,
+                                  ICM20948_B0_INT_ENABLE_1,
+                                  ICM20948_RAW_DATA_READY_ENABLE);
 }
 
 static BSP_Status_t ICM20948_EnableInternalI2CMaster(void)
@@ -1112,16 +1127,16 @@ static BSP_Status_t ICM20948_ConfigMagStream(void)
     BSP_Status_t status;
 
     /*
-     * 与官方 eMD 的非 DMP 路径一致：
-     *   SLV0 每周期读取上一帧 ST1..ST2 共 9 字节；
-     *   SLV1 每周期向 CNTL2 写 0x01，触发下一次单次测量。
-     * 这样不依赖连续模式在不同模块批次上的保持状态。
+     * AK09916 已在初始化阶段进入连续测量模式4（100 Hz）。
+     * 运行期只保留 SLV0 读取 ST1..ST2 共9字节，不再让 SLV1
+     * 每个内部 I2C 周期重复写 CNTL2。
      */
-    status = ICM20948_AuxSlv0StartRead(AK09916_REG_ST1, 9U);
-    if (status != BSP_OK) return status;
+    status = ICM20948_AuxSlv1Disable();
+    if (status != BSP_OK) {
+        return status;
+    }
 
-    return ICM20948_AuxSlv1StartWrite(AK09916_REG_CNTL2,
-                                      DRV_ICM20948_MAG_MODE);
+    return ICM20948_AuxSlv0StartRead(AK09916_REG_ST1, 9U);
 }
 
 /* ============================== 公共接口 ================================== */
@@ -1595,6 +1610,13 @@ BSP_Status_t Drv_ICM20948_Update(void)
                 return BSP_BUSY;
             }
             if (ICM20948_HandleRunStatus(status) != BSP_OK) return status;
+
+            /*
+             * 校准期间已经获得有效六轴样本。允许诊断接口读取这些数据，
+             * 但 calibrating 保持为1，运动控制仍不会放行。
+             */
+            s_data.accel_gyro_valid = 1U;
+            s_info.data_valid = 1U;
 
             if (ICM20948_IsCalibrationSampleStable() != 0U) {
                 /* 当前 gyro_dps 尚未减去运行时零偏，因此可直接累计。 */

@@ -91,7 +91,7 @@ extern "C" {
 #define DRV_ICM20948_GYRO_DLPF_CFG               3U
 #define DRV_ICM20948_ACCEL_DLPF_CFG              3U
 
-/* AK09916 单次测量模式；运行时由 SLV1 每个内部 I2C 周期重新触发。 */
+/* AK09916 连续测量模式4：100 Hz；运行期只由 SLV0 连续读取。 */
 #define DRV_ICM20948_MAG_ENABLE                  1U
 
 /*
@@ -101,7 +101,7 @@ extern "C" {
  */
 #define DRV_ICM20948_MAG_REQUIRED                0U
 
-#define DRV_ICM20948_MAG_MODE                    0x01U
+#define DRV_ICM20948_MAG_MODE                    0x08U
 
 /*
  * 磁力计初始化访问方式：
@@ -150,7 +150,7 @@ extern "C" {
 #define DRV_ICM20948_GYRO_CAL_SAMPLE_COUNT      200U
 #define DRV_ICM20948_GYRO_CAL_MIN_SAMPLES       DRV_ICM20948_GYRO_CAL_SAMPLE_COUNT
 #define DRV_ICM20948_GYRO_CAL_TIMEOUT_MS        6000U
-#define DRV_ICM20948_GYRO_CAL_MAX_DPS             6.0f
+#define DRV_ICM20948_GYRO_CAL_MAX_DPS            20.0f
 #define DRV_ICM20948_GYRO_CAL_ACCEL_MIN_G         0.80f
 #define DRV_ICM20948_GYRO_CAL_ACCEL_MAX_G         1.20f
 

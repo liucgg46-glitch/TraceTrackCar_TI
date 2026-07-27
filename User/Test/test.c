@@ -2320,10 +2320,21 @@ void Test_ICM20948_Update(void)
                    "Sampling        : %s | Valid data: %s | Gyro calibration: %s\r\n",
                    (info.online != 0U) ? "ONLINE" : "OFFLINE",
                    (unsigned int)info.who_am_i,
-                   (info.running != 0U) ? "RUNNING" : "STOPPED",
+                   (info.calibrating != 0U) ? "CALIBRATING" :
+                   ((info.running != 0U) ? "RUNNING" : "STOPPED"),
                    (info.data_valid != 0U) ? "YES" : "NO",
                    (info.calibrating != 0U) ? "IN PROGRESS" :
                    ((info.gyro_cal_samples != 0U) ? "DONE" : "NOT STARTED"));
+    Test_ICM20948_Print(line);
+
+    (void)snprintf(
+        line,
+        sizeof(line),
+        "Calibration     : accepted=%u rejected=%lu max_gyro_mdps=%ld accel_mg=%ld\r\n",
+        (unsigned int)info.gyro_cal_samples,
+        (unsigned long)info.gyro_cal_reject_count,
+        (long)(info.gyro_cal_last_max_abs_dps * 1000.0f),
+        (long)(info.gyro_cal_last_accel_norm_g * 1000.0f));
     Test_ICM20948_Print(line);
 
     (void)snprintf(
