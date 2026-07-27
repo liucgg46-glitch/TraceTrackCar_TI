@@ -21,6 +21,7 @@ typedef struct {
     volatile BSP_Status_t completion_status;
     volatile I2C_AsyncPhase_t phase;
     volatile uint8_t repeat_read_pending;
+    volatile uint8_t rx_use_dma;
     I2C_AsyncOp_t op;
     uint8_t dev_addr;
     uint8_t tx_copy[I2C_TX_COPY_BUF_LEN];
@@ -41,9 +42,13 @@ static I2C_Runtime_t s_i2c_rt[I2C_BUS_COUNT];
 #define I2C_HW_READ_ON_TX_EMPTY_FIX_V7 1U
 #define I2C_MCTR_SINGLE_WRITE_ERRATA_FIX_V8 1U
 #define I2C_COMPLETION_LINE_RELEASE_FIX_V9 1U
+#define I2C_RXDONE_FIFO_ERRATA_FIX_V12 1U
 
 #define I2C_CONTROLLER_TX_FIFO_DEPTH 8U
+#define I2C_CONTROLLER_RX_FIFO_DEPTH 8U
 #define I2C_CONTROLLER_START_SETTLE_CYCLES 32U
+#define I2C_RXDONE_SETTLE_CYCLES 16U
+#define I2C_RXDONE_FIFO_WAIT_CYCLES 512U
 
 #define I2C_DIAG_EVENT_NONE          0U
 #define I2C_DIAG_EVENT_TX_DONE       1U
@@ -59,6 +64,7 @@ static I2C_Runtime_t s_i2c_rt[I2C_BUS_COUNT];
 
 static void I2C_HandleInterrupt(void);
 static void I2C_MarkCompletion(BSP_Status_t status);
+static uint8_t I2C_FinalizeReceive(I2C_Runtime_t *rt);
 static void I2C_StartControllerTransfer(
     uint8_t dev_addr,
     DL_I2C_CONTROLLER_DIRECTION direction,
@@ -164,6 +170,93 @@ static void I2C_StartControllerTransfer(
         __NOP();
         settle_cycles--;
     }
+}
+
+/*
+ * MSPM0Gx51x勘误I2C_ERR_08：
+ * RX_DONE出现时，RX FIFO中的最后一个字节可能尚未完成更新。
+ *
+ * 对不超过8字节的短读事务不用RX DMA，RX_DONE后先等待若干I2C功能
+ * 时钟，再直接从FIFO取出完整数据。长读事务仍保留DMA，但不能在
+ * RX_DONE入口立即关闭DMA，必须等DMA剩余计数归零后再完成回调。
+ */
+static uint8_t I2C_FinalizeReceive(I2C_Runtime_t *rt)
+{
+    volatile uint32_t settle_cycles;
+    uint32_t wait_cycles;
+    uint16_t received;
+
+    if ((rt == 0) ||
+        (rt->busy == 0U) ||
+        (rt->phase != I2C_PHASE_RX) ||
+        (rt->rx_buf == 0) ||
+        (rt->rx_len == 0U) ||
+        (rt->completion_pending != 0U)) {
+        return 0U;
+    }
+
+    settle_cycles = I2C_RXDONE_SETTLE_CYCLES;
+    while (settle_cycles > 0U) {
+        __NOP();
+        settle_cycles--;
+    }
+
+    if (rt->rx_use_dma != 0U) {
+        /*
+         * RX_DONE可能早于最后一次RX FIFO DMA请求。
+         * 保持DMA开启，等剩余计数真正归零后再关闭通道。
+         */
+        if (DL_DMA_getTransferSize(
+                DMA,
+                DMA_CH3_CHAN_ID) != 0U) {
+            return 0U;
+        }
+
+        DL_DMA_disableChannel(DMA, DMA_CH3_CHAN_ID);
+    } else {
+        /*
+         * 短事务最多8字节，全部数据可以留在硬件RX FIFO中。
+         * 逐字节等待并读取，避免RX_DONE与最后一个FIFO写入之间的竞态。
+         */
+        received = 0U;
+        while (received < rt->rx_len) {
+            wait_cycles = I2C_RXDONE_FIFO_WAIT_CYCLES;
+            while (DL_I2C_isControllerRXFIFOEmpty(
+                       I2C_SENSOR_INST) &&
+                   (wait_cycles > 0U)) {
+                __NOP();
+                wait_cycles--;
+            }
+
+            if (wait_cycles == 0U) {
+                rt->debug.timeout_count++;
+                I2C_RecordDebugEvent(
+                    rt,
+                    I2C_DIAG_EVENT_TIMEOUT,
+                    (uint32_t)DL_I2C_IIDX_NO_INT);
+                I2C_Abort();
+                I2C_MarkCompletion(BSP_TIMEOUT);
+                return 1U;
+            }
+
+            rt->rx_buf[received] =
+                DL_I2C_receiveControllerData(
+                    I2C_SENSOR_INST);
+            received++;
+        }
+    }
+
+    rt->debug.rx_done_count++;
+    rt->debug.status_rx_done =
+        (uint16_t)DL_I2C_getControllerStatus(
+            I2C_SENSOR_INST);
+    I2C_RecordDebugEvent(
+        rt,
+        I2C_DIAG_EVENT_RX_DONE,
+        (uint32_t)DL_I2C_IIDX_NO_INT);
+    I2C_MarkCompletion(BSP_OK);
+
+    return 1U;
 }
 
 static BSP_Status_t I2C_WaitStatus(uint32_t mask, uint8_t wait_set)
@@ -607,6 +700,7 @@ static BSP_Status_t I2C_Queue(I2C_Bus_t bus,
     rt->completion_pending = 0U;
     rt->completion_status = BSP_BUSY;
     rt->repeat_read_pending = 0U;
+    rt->rx_use_dma = 0U;
     rt->phase = I2C_PHASE_IDLE;
     rt->op = op;
     rt->dev_addr = dev_addr;
@@ -642,13 +736,9 @@ static BSP_Status_t I2C_Queue(I2C_Bus_t bus,
 
     if (op == I2C_ASYNC_WRITE_READ) {
         /*
-         * MSPM0的RD_ON_TXEMPTY专门用于命令式读取：
-         * 先以写地址发完TX FIFO，再由硬件在不发STOP的情况下产生
-         * repeated START，并按MSA中的读方向接收MBLEN字节。
-         *
-         * MCTR的BURSTRUN不会自动清零，同时I2C_ERR_07禁止连续写MCTR。
-         * 因此由I2C_StartControllerTransfer()一次写入RD_ON_TXEMPTY、
-         * MBLEN、START、STOP和BURSTRUN全部字段。
+         * 命令式写后读仍使用RD_ON_TXEMPTY硬件重复START。
+         * 关键变化仅在接收侧：短读留在RX FIFO，RX_DONE后按I2C_ERR_08
+         * 要求等待并读取，避免最后一次DMA请求与RX_DONE竞态。
          */
         DL_DMA_disableChannel(DMA, DMA_CH2_CHAN_ID);
         DL_DMA_disableChannel(DMA, DMA_CH3_CHAN_ID);
@@ -668,18 +758,25 @@ static BSP_Status_t I2C_Queue(I2C_Bus_t bus,
             return BSP_ERROR;
         }
 
-        DL_DMA_setSrcAddr(
-            DMA,
-            DMA_CH3_CHAN_ID,
-            (uint32_t)&I2C_SENSOR_INST->MASTER.MRXDATA);
-        DL_DMA_setDestAddr(
-            DMA,
-            DMA_CH3_CHAN_ID,
-            (uint32_t)rt->rx_buf);
-        DL_DMA_setTransferSize(
-            DMA,
-            DMA_CH3_CHAN_ID,
-            rt->rx_len);
+        rt->rx_use_dma =
+            (rt->rx_len > I2C_CONTROLLER_RX_FIFO_DEPTH) ?
+            1U : 0U;
+
+        if (rt->rx_use_dma != 0U) {
+            DL_DMA_setSrcAddr(
+                DMA,
+                DMA_CH3_CHAN_ID,
+                (uint32_t)&I2C_SENSOR_INST->MASTER.MRXDATA);
+            DL_DMA_setDestAddr(
+                DMA,
+                DMA_CH3_CHAN_ID,
+                (uint32_t)rt->rx_buf);
+            DL_DMA_setTransferSize(
+                DMA,
+                DMA_CH3_CHAN_ID,
+                rt->rx_len);
+            DL_DMA_enableChannel(DMA, DMA_CH3_CHAN_ID);
+        }
 
         rt->phase = I2C_PHASE_RX;
         rt->repeat_read_pending = 1U;
@@ -687,7 +784,6 @@ static BSP_Status_t I2C_Queue(I2C_Bus_t bus,
             (uint16_t)DL_I2C_getControllerStatus(
                 I2C_SENSOR_INST);
         rt->debug.repeat_start_count++;
-        DL_DMA_enableChannel(DMA, DMA_CH3_CHAN_ID);
 
         I2C_RecordDebugEvent(
             rt,
@@ -709,21 +805,28 @@ static BSP_Status_t I2C_Queue(I2C_Bus_t bus,
     } else if (op == I2C_ASYNC_READ) {
         DL_DMA_disableChannel(DMA, DMA_CH3_CHAN_ID);
         DL_I2C_flushControllerRXFIFO(I2C_SENSOR_INST);
-        DL_DMA_setSrcAddr(
-            DMA,
-            DMA_CH3_CHAN_ID,
-            (uint32_t)&I2C_SENSOR_INST->MASTER.MRXDATA);
-        DL_DMA_setDestAddr(
-            DMA,
-            DMA_CH3_CHAN_ID,
-            (uint32_t)rt->rx_buf);
-        DL_DMA_setTransferSize(
-            DMA,
-            DMA_CH3_CHAN_ID,
-            rt->rx_len);
+
+        rt->rx_use_dma =
+            (rt->rx_len > I2C_CONTROLLER_RX_FIFO_DEPTH) ?
+            1U : 0U;
+
+        if (rt->rx_use_dma != 0U) {
+            DL_DMA_setSrcAddr(
+                DMA,
+                DMA_CH3_CHAN_ID,
+                (uint32_t)&I2C_SENSOR_INST->MASTER.MRXDATA);
+            DL_DMA_setDestAddr(
+                DMA,
+                DMA_CH3_CHAN_ID,
+                (uint32_t)rt->rx_buf);
+            DL_DMA_setTransferSize(
+                DMA,
+                DMA_CH3_CHAN_ID,
+                rt->rx_len);
+            DL_DMA_enableChannel(DMA, DMA_CH3_CHAN_ID);
+        }
 
         rt->phase = I2C_PHASE_RX;
-        DL_DMA_enableChannel(DMA, DMA_CH3_CHAN_ID);
 
         I2C_RecordDebugEvent(
             rt,
@@ -883,9 +986,11 @@ BSP_Status_t BSP_I2C_GetDebug(I2C_Bus_t bus, BSP_I2C_Debug_t *debug)
     debug->enabled_interrupts =
         I2C_SENSOR_INST->CPU_INT.IMASK;
     debug->dma_rx_remaining =
+        (rt->rx_use_dma != 0U) ?
         (uint16_t)DL_DMA_getTransferSize(
             DMA,
-            DMA_CH3_CHAN_ID);
+            DMA_CH3_CHAN_ID) :
+        0U;
 
     return BSP_OK;
 }
@@ -959,19 +1064,12 @@ void BSP_I2C_Task(I2C_Bus_t bus)
                 I2C_DIAG_EVENT_TX_DONE,
                 (uint32_t)DL_I2C_IIDX_NO_INT);
             I2C_MarkCompletion(BSP_OK);
-        } else if ((rt->phase == I2C_PHASE_RX) &&
-                   (DL_DMA_getTransferSize(
-                        DMA,
-                        DMA_CH3_CHAN_ID) == 0U)) {
-            DL_DMA_disableChannel(DMA, DMA_CH3_CHAN_ID);
-            rt->debug.rx_done_count++;
-            rt->debug.status_rx_done =
-                (uint16_t)controller_status;
-            I2C_RecordDebugEvent(
-                rt,
-                I2C_DIAG_EVENT_RX_DONE,
-                (uint32_t)DL_I2C_IIDX_NO_INT);
-            I2C_MarkCompletion(BSP_OK);
+        } else if (rt->phase == I2C_PHASE_RX) {
+            /*
+             * RX_DONE中断漏送时也必须执行相同的FIFO/DMA收尾规则。
+             * 对长DMA读，剩余计数未归零时函数返回0，继续等待。
+             */
+            (void)I2C_FinalizeReceive(rt);
         }
     }
 
@@ -1051,6 +1149,7 @@ void BSP_I2C_Task(I2C_Bus_t bus)
     rt->op = I2C_ASYNC_NONE;
     rt->phase = I2C_PHASE_IDLE;
     rt->repeat_read_pending = 0U;
+    rt->rx_use_dma = 0U;
     rt->completion_pending = 0U;
     rt->callback = 0;
 
@@ -1128,19 +1227,13 @@ static void I2C_HandleInterrupt(void)
         } else if (iidx ==
                    DL_I2C_IIDX_CONTROLLER_RX_DONE) {
             if ((rt->busy != 0U) &&
-                (rt->phase == I2C_PHASE_RX)) {
-                DL_DMA_disableChannel(DMA, DMA_CH3_CHAN_ID);
-
-                rt->debug.rx_done_count++;
-                rt->debug.status_rx_done =
-                    (uint16_t)DL_I2C_getControllerStatus(
-                        I2C_SENSOR_INST);
-                I2C_RecordDebugEvent(
-                    rt,
-                    I2C_DIAG_EVENT_RX_DONE,
-                    (uint32_t)iidx);
-
-                I2C_MarkCompletion(BSP_OK);
+                (rt->phase == I2C_PHASE_RX) &&
+                (rt->completion_pending == 0U)) {
+                /*
+                 * 不在RX_DONE入口立即关闭DMA。
+                 * I2C_ERR_08要求等待FIFO最后一个字节完成更新。
+                 */
+                (void)I2C_FinalizeReceive(rt);
             }
         }
     } while ((uint32_t)iidx != 0U);
