@@ -40,6 +40,7 @@ static I2C_Runtime_t s_i2c_rt[I2C_BUS_COUNT];
 #define I2C_ONE_BYTE_TX_FIFO_FIX_V6 1U
 #define I2C_HW_READ_ON_TX_EMPTY_FIX_V7 1U
 #define I2C_MCTR_SINGLE_WRITE_ERRATA_FIX_V8 1U
+#define I2C_COMPLETION_LINE_RELEASE_FIX_V9 1U
 
 #define I2C_CONTROLLER_TX_FIFO_DEPTH 8U
 #define I2C_CONTROLLER_START_SETTLE_CYCLES 32U
@@ -896,6 +897,8 @@ void BSP_I2C_Task(I2C_Bus_t bus)
     BSP_Status_t status;
     uint32_t controller_status;
     uint32_t raw_events;
+    uint16_t line_state;
+    uint8_t bus_released;
     const uint32_t event_mask =
         DL_I2C_INTERRUPT_CONTROLLER_TX_DONE |
         DL_I2C_INTERRUPT_CONTROLLER_RX_DONE |
@@ -922,6 +925,19 @@ void BSP_I2C_Task(I2C_Bus_t bus)
 
     controller_status =
         DL_I2C_getControllerStatus(I2C_SENSOR_INST);
+    line_state = I2C_GetLineState();
+
+    /*
+     * MSPM0的BUSY_BUS状态位可能在STOP结束后短暂或异常残留。
+     * 当Controller已经停止且SCL/SDA均为高时，物理总线实际上已经
+     * 释放。完成判断必须与I2C_Queue和BSP_I2C_IsBusy使用同一规则，
+     * 否则已收到RX_DONE的成功事务会被等待到超时。
+     */
+    bus_released =
+        (((controller_status &
+           DL_I2C_CONTROLLER_STATUS_BUSY_BUS) == 0U) ||
+         (line_state == 0x03U)) ?
+        1U : 0U;
 
     /*
      * 对没有送达完成中断的事务，用硬件最终状态收尾。
@@ -932,8 +948,7 @@ void BSP_I2C_Task(I2C_Bus_t bus)
           DL_I2C_CONTROLLER_STATUS_BUSY) == 0U) &&
         ((controller_status &
           DL_I2C_CONTROLLER_STATUS_IDLE) != 0U) &&
-        ((controller_status &
-          DL_I2C_CONTROLLER_STATUS_BUSY_BUS) == 0U)) {
+        (bus_released != 0U)) {
         if ((rt->phase == I2C_PHASE_TX) &&
             (rt->op == I2C_ASYNC_WRITE)) {
             rt->debug.tx_done_count++;
@@ -971,8 +986,7 @@ void BSP_I2C_Task(I2C_Bus_t bus)
             DL_I2C_CONTROLLER_STATUS_BUSY) != 0U) ||
           ((controller_status &
             DL_I2C_CONTROLLER_STATUS_IDLE) == 0U) ||
-          ((controller_status &
-            DL_I2C_CONTROLLER_STATUS_BUSY_BUS) != 0U))) {
+          (bus_released == 0U))) {
         if ((uint32_t)(BSP_GET_TICK() - rt->debug.start_tick) <
             I2C_DMA_TIMEOUT_MS) {
             return;
