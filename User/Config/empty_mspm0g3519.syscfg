@@ -369,7 +369,7 @@ I2C_SENSOR.DMA_CHANNEL_EVENT2.peripheral.$assign = "DMA_CH3";
  * 两个 CS 都由 GPIO 软件控制，便于复用现有设备驱动事务边界。
  */
 SPI_ICM20948.$name                      = "SPI_ICM20948";
-SPI_ICM20948.targetBitRate              = 4000000;
+SPI_ICM20948.targetBitRate              = 1000000;
 SPI_ICM20948.rxFifoThreshold            = "DL_SPI_RX_FIFO_LEVEL_ONE_FRAME";
 SPI_ICM20948.txFifoThreshold            = "DL_SPI_TX_FIFO_LEVEL_ONE_FRAME";
 SPI_ICM20948.peripheral.$assign         = "SPI1";

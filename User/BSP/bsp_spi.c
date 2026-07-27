@@ -123,6 +123,18 @@ static void SPI_CompleteAsync(SPI_Bus_t bus, BSP_Status_t status)
     }
 }
 
+static void SPI_DrainRxFifo(SPI_Regs *inst)
+{
+    uint8_t drain[4];
+
+    if (inst == 0) {
+        return;
+    }
+
+    while (DL_SPI_drainRXFIFO8(inst, drain, sizeof(drain)) != 0U) {
+    }
+}
+
 static BSP_Status_t SPI_TransferBlocking(SPI_Bus_t bus,
                                         const uint8_t *tx_buf,
                                         uint8_t *rx_buf,
@@ -137,6 +149,13 @@ static BSP_Status_t SPI_TransferBlocking(SPI_Bus_t bus,
     }
 
     inst = s_spi_cfg[bus].inst;
+
+    /*
+     * 阻塞事务开始前清空历史RX字节。若FIFO残留一个旧字节，
+     * 后续每次发送和接收数量仍相等，但整帧会永久错位一字节。
+     */
+    SPI_DrainRxFifo(inst);
+
     for (index = 0U; index < len; index++) {
         uint32_t timeout = SPI_BLOCK_TIMEOUT;
         uint8_t tx = (tx_buf != 0) ? tx_buf[index] : dummy_tx;
