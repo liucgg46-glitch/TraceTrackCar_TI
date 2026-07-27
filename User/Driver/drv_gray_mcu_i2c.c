@@ -731,10 +731,24 @@ BSP_Status_t Drv_GrayMcu_Update(void)
         return BSP_BUSY;
 
     case GRAY_MCU_INIT_SELECT_ANALOG:
-        /* 手册方法 2：只发一次 0xB0，并产生 STOP。 */
+#if DRV_GRAY_MCU_ANALOG_READ_METHOD == 1U
+        /*
+         * 方法1在每一帧读取前都会发送0xB0，因此初始化阶段不再额外
+         * 执行一次“0xB0 + STOP”的方法2选择事务。
+         */
+        s_gray.online = 1U;
+        s_gray.initialized = 1U;
+        s_init_step = GRAY_MCU_INIT_RUN;
+        s_next_action_ms = now;
+        return BSP_BUSY;
+#elif DRV_GRAY_MCU_ANALOG_READ_METHOD == 2U
+        /* 手册方法2：只发一次0xB0，并产生STOP。 */
         return GrayMcu_StartWrite1(GRAY_MCU_OP_ANALOG_SELECT,
                                    DRV_GRAY_MCU_PHASE_ANALOG_SELECT,
                                    DRV_GRAY_MCU_CMD_ANALOG_ALL);
+#else
+#error "DRV_GRAY_MCU_ANALOG_READ_METHOD must be 1U or 2U"
+#endif
 
     case GRAY_MCU_INIT_RUN:
     default:
@@ -744,11 +758,24 @@ BSP_Status_t Drv_GrayMcu_Update(void)
             return BSP_PARAM;
         }
 
-        /* 运行中只读，不再重复发送 0xB0。 */
+#if DRV_GRAY_MCU_ANALOG_READ_METHOD == 1U
+        /*
+         * 手册方法1：每帧写0xB0，不发送STOP，再使用重复START读取。
+         * 该模式用于排除“只发送一次0xB0后连续纯读”导致的间歇性FF。
+         */
+        return GrayMcu_StartCommandRead(GRAY_MCU_OP_ANALOG_READ,
+                                        DRV_GRAY_MCU_PHASE_ANALOG,
+                                        DRV_GRAY_MCU_CMD_ANALOG_ALL,
+                                        read_len);
+#elif DRV_GRAY_MCU_ANALOG_READ_METHOD == 2U
+        /* 手册方法2：运行中只读，不再重复发送0xB0。 */
         return GrayMcu_StartReadOnly(GRAY_MCU_OP_ANALOG_READ,
                                      DRV_GRAY_MCU_PHASE_ANALOG,
                                      DRV_GRAY_MCU_CMD_ANALOG_ALL,
                                      read_len);
+#else
+#error "DRV_GRAY_MCU_ANALOG_READ_METHOD must be 1U or 2U"
+#endif
     }
 }
 

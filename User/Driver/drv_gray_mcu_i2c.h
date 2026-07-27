@@ -42,6 +42,9 @@ extern "C" {
     ((uint8_t)(0x4CU | ((DRV_GRAY_MCU_ADDR_AD1 & 0x01U) << 1U) | \
                        (DRV_GRAY_MCU_ADDR_AD0 & 0x01U)))
 #define DRV_GRAY_MCU_AUTO_ADDR_SCAN              0U
+
+/* 1=每帧0xB0+重复START；2=一次0xB0后连续纯读。 */
+#define DRV_GRAY_MCU_ANALOG_READ_METHOD          1U
 #define DRV_GRAY_MCU_UNLOCK_AFTER_PING_FAILS     20U
 
 #define DRV_GRAY_MCU_CMD_PING                    0xAAU
