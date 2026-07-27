@@ -3,6 +3,21 @@
 #include "drv_motor.h"
 #include "drv_encoder.h"
 #include "pid.h"
+/*
+ * 临时检查：确认 chassis.c 实际读取到的控制参数。
+ * 完成前馈验证后删除。
+ */
+#if CONTROL_CHASSIS_SPEED_LOOP_ENABLE != 0U
+#error "CHASSIS_SPEED_LOOP_ENABLE is not 0U"
+#endif
+
+#if CONTROL_CHASSIS_PWM_MAX_PERMILLE != 800
+#error "CHASSIS_PWM_MAX_PERMILLE is not 800"
+#endif
+
+#if CONTROL_CHASSIS_FEEDFORWARD_FULL_SPEED_CPS != 15000
+#error "CHASSIS_FEEDFORWARD_FULL_SPEED_CPS is not 15000"
+#endif
 
 static Chassis_Info_t s_chassis;
 static PID_t s_speed_pid[WHEEL_COUNT];
